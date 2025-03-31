@@ -23,7 +23,7 @@ public class TeacherController {
     return ResponseEntity.ok(teacherService.saveTeacher(dto));
   }
 
-  @GetMapping("/by-client/{clientId}")
+  @GetMapping("/client/{clientId}")
   public ResponseEntity<TeacherDto> getByClientId(@PathVariable String clientId) {
     return teacherService.getTeacherByClientId(clientId).map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());

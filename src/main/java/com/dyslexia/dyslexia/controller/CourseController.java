@@ -24,7 +24,7 @@ public class CourseController {
     return ResponseEntity.ok(courseService.saveCourse(dto));
   }
 
-  @GetMapping("/by-teacher/{teacherId}")
+  @GetMapping("/teacher/{teacherId}")
   public ResponseEntity<List<CourseDto>> getCoursesByTeacher(@PathVariable Long teacherId) {
     return ResponseEntity.ok(courseService.getCoursesByTeacher(teacherId));
   }
