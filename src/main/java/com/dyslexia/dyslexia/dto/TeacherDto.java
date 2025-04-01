@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 @Builder
 public class TeacherDto {
+
   private Long id;
   private String clientId;
   private String organization;

@@ -1,20 +1,18 @@
 package com.dyslexia.dyslexia.dto;
 
-import com.dyslexia.dyslexia.enums.Grade;
 import java.util.List;
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Data
-@Builder
-public class StudentDto {
+@Getter
+@NoArgsConstructor
+public class StudentReqDto {
 
-  private Long id;
   private String clientId;
   private Long teacherId;
-  private Grade grade;
+  private String gradeLabel;
   private String type;
-  private boolean state;
+  private String state;
   private String profileImageUrl;
   private List<String> interests;
 }

@@ -1,7 +1,11 @@
 package com.dyslexia.dyslexia.service;
 
 import com.dyslexia.dyslexia.dto.CourseInfoDto;
+import com.dyslexia.dyslexia.dto.CourseInfoReqDto;
+import com.dyslexia.dyslexia.entity.Course;
 import com.dyslexia.dyslexia.entity.CourseInfo;
+import com.dyslexia.dyslexia.entity.Student;
+import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.mapper.CourseInfoMapper;
 import com.dyslexia.dyslexia.repository.CourseInfoRepository;
 import com.dyslexia.dyslexia.repository.CourseRepository;
@@ -21,24 +25,23 @@ public class CourseInfoService {
   private final StudentRepository studentRepository;
   private final TeacherRepository teacherRepository;
 
-  public CourseInfoDto saveCourseInfo(CourseInfoDto dto) {
-    CourseInfo info = courseInfoMapper.toEntity(dto);
+  public CourseInfoDto saveCourseInfo(CourseInfoReqDto dto) {
 
-    // 연관 관계 매핑
-    info.setCourse(courseRepository.findById(dto.getCourseId())
-        .orElseThrow(() -> new IllegalArgumentException("Course not found")));
-    info.setStudent(studentRepository.findById(dto.getStudentId())
-        .orElseThrow(() -> new IllegalArgumentException("Student not found")));
-    info.setTeacher(teacherRepository.findById(dto.getTeacherId())
-        .orElseThrow(() -> new IllegalArgumentException("Teacher not found")));
+    Course course = courseRepository.findById(dto.getCourseId())
+        .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+    Student student = studentRepository.findById(dto.getCourseId())
+        .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+    Teacher teacher = teacherRepository.findById(dto.getCourseId())
+        .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+
+    CourseInfo info = CourseInfo.builder().course(course).student(student).teacher(teacher)
+        .learningTime(dto.getLearningTime()).page(dto.getPage()).maxPage(dto.getMaxPage()).build();
 
     return courseInfoMapper.toDto(courseInfoRepository.save(info));
   }
 
   public List<CourseInfoDto> getInfosByStudent(Long studentId) {
-    return courseInfoRepository.findByStudentId(studentId)
-        .stream()
-        .map(courseInfoMapper::toDto)
+    return courseInfoRepository.findByStudentId(studentId).stream().map(courseInfoMapper::toDto)
         .toList();
   }
 }

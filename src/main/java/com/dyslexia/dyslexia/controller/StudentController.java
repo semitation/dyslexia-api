@@ -1,6 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.StudentDto;
+import com.dyslexia.dyslexia.dto.StudentReqDto;
 import com.dyslexia.dyslexia.service.StudentService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,8 @@ public class StudentController {
   private final StudentService studentService;
 
   @PostMapping
-  public ResponseEntity<StudentDto> createStudent(@RequestBody StudentDto dto) {
-    return ResponseEntity.ok(studentService.saveStudent(dto));
+  public ResponseEntity<StudentDto> createStudent(@RequestBody StudentReqDto req) {
+    return ResponseEntity.ok(studentService.saveStudent(req));
   }
 
   @GetMapping("/teacher/{teacherId}")

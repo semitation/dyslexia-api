@@ -1,13 +1,12 @@
 package com.dyslexia.dyslexia.dto;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
-@Data
-@Builder
-public class CourseInfoDto {
+@Getter
+@NoArgsConstructor
+public class CourseInfoReqDto {
 
-  private Long id;
   private Long courseId;
   private Long studentId;
   private Long teacherId;
