@@ -4,12 +4,12 @@ import lombok.Getter;
 
 @Getter
 public enum Grade {
-  ELEMENTARY_1("초1"),
-  ELEMENTARY_2("초2"),
-  ELEMENTARY_3("초3"),
-  ELEMENTARY_4("초4"),
-  ELEMENTARY_5("초5"),
-  ELEMENTARY_6("초6");
+  ELEMENTARY_1("1학년"),
+  ELEMENTARY_2("2학년"),
+  ELEMENTARY_3("3학년"),
+  ELEMENTARY_4("4학년"),
+  ELEMENTARY_5("5학년"),
+  ELEMENTARY_6("6학년");
 
   private final String label;
 
