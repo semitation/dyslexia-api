@@ -1,0 +1,43 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Check out code
+        uses: actions/checkout@v2
+
+      - name: Build project
+        run: |
+          ./gradlew clean build -x test
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Copy JAR file to Server
+        run: |
+          scp -o StrictHostKeyChecking=no ./build/libs/dyslexia-0.0.1-SNAPSHOT.jar hbnu@${{ secrets.DYSLEXIA_HOST }}:/home/hbnu/app/app.jar
+
+      - name: Restart Docker on Server
+        run: |
+          ssh -o StrictHostKeyChecking=no hbnu@${{ secrets.DYSLEXIA_HOST }} << 'EOF'
+          cd /home/hbnu/app
+          docker stop dyslexia_api || true
+          docker rm dyslexia_api || true
+          docker build -t dyslexia_api .
+          docker run -d --name dyslexia_api --env-file .env -p 8080:8080 dyslexia_api
+          EOF
