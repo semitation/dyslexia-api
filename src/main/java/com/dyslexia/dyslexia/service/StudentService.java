@@ -38,6 +38,7 @@ public class StudentService {
     Student student = Student.builder().clientId(dto.getClientId()).teacher(teacher).grade(grade)
         .type(dto.getType()).state(dto.getState()).profileImageUrl(dto.getProfileImageUrl())
         .interests(interests).build();
+
     return studentMapper.toDto(studentRepository.save(student));
   }
 
