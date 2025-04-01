@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,8 +26,12 @@ public class CourseInfoController {
     return ResponseEntity.ok(courseInfoService.saveCourseInfo(dto));
   }
 
-  @GetMapping("/student/{studentId}")
-  public ResponseEntity<List<CourseInfoDto>> getByStudent(@PathVariable Long studentId) {
+  @GetMapping
+  public ResponseEntity<List<CourseInfoDto>> getById(@RequestParam Long infoId) {
+    return ResponseEntity.ok(courseInfoService.getInfosById(infoId));
+  }
+  @GetMapping
+  public ResponseEntity<List<CourseInfoDto>> getByStudent(@RequestParam Long studentId) {
     return ResponseEntity.ok(courseInfoService.getInfosByStudent(studentId));
   }
 }

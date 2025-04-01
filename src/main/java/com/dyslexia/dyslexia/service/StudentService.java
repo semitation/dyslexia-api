@@ -42,6 +42,11 @@ public class StudentService {
     return studentMapper.toDto(studentRepository.save(student));
   }
 
+
+  public List<StudentDto> getStudentsById(Long id) {
+    return studentRepository.findById(id).stream().map(studentMapper::toDto).toList();
+  }
+
   public List<StudentDto> getStudentsByTeacher(Long teacherId) {
     return studentRepository.findByTeacherId(teacherId).stream().map(studentMapper::toDto).toList();
   }

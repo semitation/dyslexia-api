@@ -18,6 +18,10 @@ public class TeacherService {
     return teacherMapper.toDto(teacherRepository.save(teacherMapper.toEntity(dto)));
   }
 
+  public Optional<TeacherDto> getTeacherById(long clientId) {
+    return teacherRepository.findById(clientId).map(teacherMapper::toDto);
+  }
+
   public Optional<TeacherDto> getTeacherByClientId(String clientId) {
     return teacherRepository.findByClientId(clientId).map(teacherMapper::toDto);
   }

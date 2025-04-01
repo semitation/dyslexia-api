@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -23,8 +24,14 @@ public class TeacherController {
     return ResponseEntity.ok(teacherService.saveTeacher(dto));
   }
 
-  @GetMapping("/client/{clientId}")
-  public ResponseEntity<TeacherDto> getByClientId(@PathVariable String clientId) {
+  @GetMapping
+  public ResponseEntity<TeacherDto> getById(@RequestParam long id) {
+    return teacherService.getTeacherById(id).map(ResponseEntity::ok)
+        .orElse(ResponseEntity.notFound().build());
+  }
+
+  @GetMapping
+  public ResponseEntity<TeacherDto> getByClientId(@RequestParam String clientId) {
     return teacherService.getTeacherByClientId(clientId).map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
   }

@@ -40,6 +40,11 @@ public class CourseInfoService {
     return courseInfoMapper.toDto(courseInfoRepository.save(info));
   }
 
+  public List<CourseInfoDto> getInfosById(Long infoId) {
+    return courseInfoRepository.findById(infoId).stream().map(courseInfoMapper::toDto)
+        .toList();
+  }
+
   public List<CourseInfoDto> getInfosByStudent(Long studentId) {
     return courseInfoRepository.findByStudentId(studentId).stream().map(courseInfoMapper::toDto)
         .toList();
