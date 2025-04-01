@@ -10,122 +10,114 @@ import com.dyslexia.dyslexia.dto.CourseInfoReqDto;
 import com.dyslexia.dyslexia.dto.CourseReqDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.StudentReqDto;
-import com.dyslexia.dyslexia.entity.Course;
+import com.dyslexia.dyslexia.dto.TeacherDto;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.enums.Grade;
-import com.dyslexia.dyslexia.repository.CourseRepository;
-import com.dyslexia.dyslexia.repository.InterestRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.dyslexia.dyslexia.service.CourseInfoService;
 import com.dyslexia.dyslexia.service.CourseService;
 import com.dyslexia.dyslexia.service.StudentService;
+import com.dyslexia.dyslexia.service.TeacherService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Transactional
 class DyslexiaApplicationTests {
 
-  @Autowired private TeacherRepository teacherRepository;
-  @Autowired private InterestRepository interestRepository;
-  @Autowired private StudentService studentService;
-  @Autowired private CourseService courseService;
-  @Autowired private CourseInfoService courseInfoService;
+  @Autowired
+  private TeacherRepository teacherRepository;
+  @Autowired
+  private TeacherService teacherService;
+  @Autowired
+  private StudentService studentService;
+  @Autowired
+  private CourseService courseService;
+  @Autowired
+  private CourseInfoService courseInfoService;
+
+  // ✅ 공통 생성 메서드들
+
+  private Teacher createTeacher(String clientId, String org) {
+    return teacherRepository.save(
+        Teacher.builder().clientId(clientId).organization(org).profileImageUrl("teacher.png")
+            .build());
+  }
+
+  private StudentDto createStudent(String clientId, Teacher teacher, String gradeLabel) {
+    StudentReqDto req = new StudentReqDto();
+    req.setClientId(clientId);
+    req.setTeacherId(teacher.getId());
+    req.setGradeLabel(gradeLabel);
+    req.setType("REGULAR");
+    req.setState("ACTIVE");
+    req.setProfileImageUrl("student.png");
+    req.setInterests(List.of("과학", "독서"));
+    return studentService.saveStudent(req);
+  }
+
+  private CourseDto createCourse(String title, Teacher teacher, Grade grade) {
+    CourseReqDto req = new CourseReqDto();
+    req.setTeacherId(teacher.getId());
+    req.setSubjectPath("math/" + title);
+    req.setTitle(title);
+    req.setType("REGULAR");
+    req.setGrade(grade);
+    req.setState("ACTIVE");
+    return courseService.saveCourse(req);
+  }
+
+  // ✅ 테스트 메서드들
 
   @Test
   void testSaveTeacher() {
-    Teacher teacher = teacherRepository.save(
-        Teacher.builder()
-            .clientId("teacher01")
-            .organization("한글초등학교")
-            .profileImageUrl("teacher.png")
-            .build()
-    );
+    // when
+    Teacher teacher = createTeacher("teacher01", "한글초등학교");
 
+    // then
     assertNotNull(teacher.getId());
     assertEquals("teacher01", teacher.getClientId());
   }
 
   @Test
   void testSaveStudent() {
-    Teacher teacher = teacherRepository.save(
-        Teacher.builder()
-            .clientId("teacher02")
-            .organization("중앙초")
-            .profileImageUrl("teacher.png")
-            .build()
-    );
+    // given
+    Teacher teacher = createTeacher("teacher02", "중앙초");
 
-    StudentReqDto req = new StudentReqDto();
-    req.setClientId("student01");
-    req.setTeacherId(teacher.getId());
-    req.setGradeLabel("4학년");
-    req.setType("REGULAR");
-    req.setState("ACTIVE");
-    req.setProfileImageUrl("student.png");
-    req.setInterests(List.of("과학", "독서"));
+    // when
+    StudentDto student = createStudent("student01", teacher, "4학년");
 
-    StudentDto student = studentService.saveStudent(req);
-
+    // then
     assertEquals("student01", student.getClientId());
-    assertEquals(Grade.ELEMENTARY_4, student.getGrade());
+    assertEquals(Grade.GRADE_4, student.getGrade());
     assertTrue(student.getInterests().contains("과학"));
   }
 
   @Test
   void testSaveCourse() {
-    Teacher teacher = teacherRepository.save(
-        Teacher.builder()
-            .clientId("teacher03")
-            .organization("국제초등학교")
-            .profileImageUrl("teacher.png")
-            .build()
-    );
+    // given
+    Teacher teacher = createTeacher("teacher03", "국제초등학교");
 
-    CourseReqDto req = new CourseReqDto();
-    req.setTeacherId(teacher.getId());
-    req.setSubjectPath("math/algebra");
-    req.setTitle("기초 대수학");
-    req.setType("REGULAR");
-    req.setGrade(Grade.ELEMENTARY_4);
-    req.setState("ACTIVE");
+    // when
+    CourseDto course = createCourse("기초 대수학", teacher, Grade.GRADE_4);
 
-    CourseDto course = courseService.saveCourse(req);
-
+    // then
     assertEquals("기초 대수학", course.getTitle());
-    assertEquals(Grade.ELEMENTARY_4, course.getGrade());
+    assertEquals(Grade.GRADE_4, course.getGrade());
   }
 
   @Test
   void testSaveCourseInfo() {
-    // 준비: 교사, 학생, 과목 먼저 생성
-    Teacher teacher = teacherRepository.save(
-        Teacher.builder().clientId("teacher04").organization("명문초").profileImageUrl("img.png").build()
-    );
+    // given
+    Teacher teacher = createTeacher("teacher04", "명문초");
+    StudentDto student = createStudent("student99", teacher, "3학년");
+    CourseDto course = createCourse("기초 물리", teacher, Grade.GRADE_3);
 
-    StudentReqDto studentReq = new StudentReqDto();
-    studentReq.setClientId("student99");
-    studentReq.setTeacherId(teacher.getId());
-    studentReq.setGradeLabel("3학년");
-    studentReq.setType("REGULAR");
-    studentReq.setState("ACTIVE");
-    studentReq.setProfileImageUrl("student.png");
-    studentReq.setInterests(List.of("수학", "코딩"));
-    StudentDto student = studentService.saveStudent(studentReq);
-
-    CourseReqDto courseReq = new CourseReqDto();
-    courseReq.setTeacherId(teacher.getId());
-    courseReq.setSubjectPath("science/physics");
-    courseReq.setTitle("기초 물리");
-    courseReq.setType("REGULAR");
-    courseReq.setGrade(Grade.ELEMENTARY_3);
-    courseReq.setState("ACTIVE");
-    CourseDto course = courseService.saveCourse(courseReq);
-
-    // 수강 정보 저장
+    // when
     CourseInfoReqDto infoReq = new CourseInfoReqDto();
     infoReq.setCourseId(course.getId());
     infoReq.setStudentId(student.getId());
@@ -136,8 +128,64 @@ class DyslexiaApplicationTests {
 
     CourseInfoDto info = courseInfoService.saveCourseInfo(infoReq);
 
+    // then
     assertEquals(60, info.getLearningTime());
     assertEquals(course.getId(), info.getCourseId());
     assertEquals(student.getId(), info.getStudentId());
+  }
+
+  @Test
+  void testGetTeacherById() throws NotFoundException {
+    Teacher teacher = createTeacher("teacher001", "예림초등학교");
+
+    TeacherDto result = teacherService.getById(teacher.getId());
+
+    assertNotNull(result);
+    assertEquals("teacher001", result.getClientId());
+  }
+
+  @Test
+  void testGetStudentById() throws NotFoundException {
+    Teacher teacher = createTeacher("teacher002", "현명초등학교");
+
+    StudentDto saved = createStudent("student001", teacher, "4학년");
+    StudentDto result = studentService.getById(saved.getId());
+
+    assertNotNull(result);
+    assertEquals("student001", result.getClientId());
+    assertTrue(result.getInterests().contains("과학"));
+  }
+
+  @Test
+  void testGetCourseById() throws NotFoundException {
+    Teacher teacher = createTeacher("teacher003", "미래초");
+
+    CourseDto saved = createCourse("기초 우주과학", teacher, Grade.GRADE_4);
+    CourseDto result = courseService.getById(saved.getId());
+
+    assertNotNull(result);
+    assertEquals("기초 우주과학", result.getTitle());
+  }
+
+  @Test
+  void testGetCourseInfoById() throws NotFoundException {
+    Teacher teacher = createTeacher("teacher004", "지성초");
+    StudentDto student = createStudent("student999", teacher, "3학년");
+    CourseDto course = createCourse("수학 사고력 향상", teacher, Grade.GRADE_3);
+
+    CourseInfoReqDto infoReq = new CourseInfoReqDto();
+    infoReq.setCourseId(course.getId());
+    infoReq.setStudentId(student.getId());
+    infoReq.setTeacherId(teacher.getId());
+    infoReq.setLearningTime(45);
+    infoReq.setPage(2);
+    infoReq.setMaxPage(5);
+
+    CourseInfoDto saved = courseInfoService.saveCourseInfo(infoReq);
+    CourseInfoDto result = courseInfoService.getById(saved.getId());
+
+    assertNotNull(result);
+    assertEquals(saved.getId(), result.getId());
+    assertEquals(45, result.getLearningTime());
   }
 }

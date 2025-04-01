@@ -3,6 +3,7 @@ package com.dyslexia.dyslexia.controller;
 import com.dyslexia.dyslexia.dto.TeacherDto;
 import com.dyslexia.dyslexia.service.TeacherService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,10 +25,9 @@ public class TeacherController {
     return ResponseEntity.ok(teacherService.saveTeacher(dto));
   }
 
-  @GetMapping
-  public ResponseEntity<TeacherDto> getById(@RequestParam long id) {
-    return teacherService.getTeacherById(id).map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+  @GetMapping("/{id}")
+  public ResponseEntity<TeacherDto> getById(@PathVariable long id) throws NotFoundException {
+    return ResponseEntity.ok(teacherService.getById(id));
   }
 
   @GetMapping

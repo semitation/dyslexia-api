@@ -5,6 +5,7 @@ import com.dyslexia.dyslexia.mapper.TeacherMapper;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -18,8 +19,9 @@ public class TeacherService {
     return teacherMapper.toDto(teacherRepository.save(teacherMapper.toEntity(dto)));
   }
 
-  public Optional<TeacherDto> getTeacherById(long clientId) {
-    return teacherRepository.findById(clientId).map(teacherMapper::toDto);
+  public TeacherDto getById(Long id) throws NotFoundException {
+    return teacherRepository.findById(id).map(teacherMapper::toDto)
+        .orElseThrow(NotFoundException::new);
   }
 
   public Optional<TeacherDto> getTeacherByClientId(String clientId) {

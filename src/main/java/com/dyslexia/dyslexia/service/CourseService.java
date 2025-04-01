@@ -9,6 +9,7 @@ import com.dyslexia.dyslexia.repository.CourseRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -30,7 +31,14 @@ public class CourseService {
     return courseMapper.toDto(courseRepository.save(course));
   }
 
+  public CourseDto getById(Long id) throws NotFoundException {
+    return courseRepository.findById(id).map(courseMapper::toDto)
+        .orElseThrow(NotFoundException::new);
+  }
+
   public List<CourseDto> getCoursesByTeacher(Long teacherId) {
     return courseRepository.findByTeacherId(teacherId).stream().map(courseMapper::toDto).toList();
   }
+
+
 }

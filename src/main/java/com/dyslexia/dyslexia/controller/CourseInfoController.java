@@ -5,6 +5,7 @@ import com.dyslexia.dyslexia.dto.CourseInfoReqDto;
 import com.dyslexia.dyslexia.service.CourseInfoService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,10 +27,11 @@ public class CourseInfoController {
     return ResponseEntity.ok(courseInfoService.saveCourseInfo(dto));
   }
 
-  @GetMapping
-  public ResponseEntity<List<CourseInfoDto>> getById(@RequestParam Long infoId) {
-    return ResponseEntity.ok(courseInfoService.getInfosById(infoId));
+  @GetMapping("/{id}")
+  public ResponseEntity<CourseInfoDto> getById(@PathVariable Long id) throws NotFoundException {
+    return ResponseEntity.ok(courseInfoService.getById(id));
   }
+
   @GetMapping
   public ResponseEntity<List<CourseInfoDto>> getByStudent(@RequestParam Long studentId) {
     return ResponseEntity.ok(courseInfoService.getInfosByStudent(studentId));
