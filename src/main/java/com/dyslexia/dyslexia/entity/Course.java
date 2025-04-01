@@ -1,6 +1,9 @@
 package com.dyslexia.dyslexia.entity;
 
+import com.dyslexia.dyslexia.enums.Grade;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -38,7 +41,8 @@ public class Course {
 
   private String type;
 
-  private String grade;
+  @Enumerated(EnumType.STRING)
+  private Grade grade;
 
   private LocalDateTime createdAt;
 

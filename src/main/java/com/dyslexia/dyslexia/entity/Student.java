@@ -1,6 +1,9 @@
 package com.dyslexia.dyslexia.entity;
 
+import com.dyslexia.dyslexia.enums.Grade;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -33,7 +36,8 @@ public class Student {
   @JoinColumn(name = "teacherId")
   private Teacher teacher;
 
-  private String grade;
+  @Enumerated(EnumType.STRING)
+  private Grade grade;
 
   private String type;
 
