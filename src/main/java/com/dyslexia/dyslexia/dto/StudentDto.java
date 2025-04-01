@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 import com.dyslexia.dyslexia.enums.Grade;
+import java.util.List;
 import lombok.Builder;
 import lombok.Data;
 
@@ -11,7 +12,7 @@ public class StudentDto {
   private Long teacherId;
   private Grade grade;
   private String type;
-  private String interested;
   private boolean state;
   private String profileImageUrl;
+  private List<String> interests;
 }

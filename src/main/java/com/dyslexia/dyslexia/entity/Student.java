@@ -9,8 +9,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,6 +24,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @NoArgsConstructor
 public class Student {
+
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,22 +40,22 @@ public class Student {
   private Grade grade;
 
   private String type;
-
-  private String interested;
-
   private String state;
-
   private String profileImageUrl;
 
+  @ManyToMany
+  @JoinTable(name = "student_interest", joinColumns = @JoinColumn(name = "studentId"), inverseJoinColumns = @JoinColumn(name = "interestId"))
+  private List<Interest> interests = new ArrayList<>();
+
   @Builder
-  public Student(String clientId, Teacher teacher, Grade grade, String type, String interested,
-      String state, String profileImageUrl) {
+  public Student(String clientId, Teacher teacher, Grade grade, String type, String state,
+      String profileImageUrl, List<Interest> interests) {
     this.clientId = clientId;
     this.teacher = teacher;
     this.grade = grade;
     this.type = type;
-    this.interested = interested;
     this.state = state;
     this.profileImageUrl = profileImageUrl;
+    this.interests = interests;
   }
 }
