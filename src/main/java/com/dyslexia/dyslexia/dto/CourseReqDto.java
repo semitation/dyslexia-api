@@ -3,8 +3,10 @@ package com.dyslexia.dyslexia.dto;
 import com.dyslexia.dyslexia.enums.Grade;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @NoArgsConstructor
 public class CourseReqDto {
 

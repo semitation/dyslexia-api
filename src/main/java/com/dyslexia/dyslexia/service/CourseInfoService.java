@@ -29,10 +29,10 @@ public class CourseInfoService {
 
     Course course = courseRepository.findById(dto.getCourseId())
         .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-    Student student = studentRepository.findById(dto.getCourseId())
-        .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-    Teacher teacher = teacherRepository.findById(dto.getCourseId())
-        .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+    Student student = studentRepository.findById(dto.getStudentId())
+        .orElseThrow(() -> new IllegalArgumentException("Student not found"));
+    Teacher teacher = teacherRepository.findById(dto.getTeacherId())
+        .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
 
     CourseInfo info = CourseInfo.builder().course(course).student(student).teacher(teacher)
         .learningTime(dto.getLearningTime()).page(dto.getPage()).maxPage(dto.getMaxPage()).build();
