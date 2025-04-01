@@ -31,6 +31,8 @@ jobs:
       - name: Copy JAR file to Server
         run: |
           scp -o StrictHostKeyChecking=no ./build/libs/dyslexia-0.0.1-SNAPSHOT.jar hbnu@${{ secrets.DYSLEXIA_HOST }}:/home/hbnu/app/app.jar
+          scp -o StrictHostKeyChecking=no ./Dockerfile hbnu@${{ secrets.DYSLEXIA_HOST }}:/home/hbnu/app/Dockerfile
+      
 
       - name: Restart Docker on Server
         run: |
