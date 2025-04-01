@@ -2,6 +2,7 @@ package com.dyslexia.dyslexia;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dyslexia.dyslexia.dto.CourseDto;
@@ -11,8 +12,11 @@ import com.dyslexia.dyslexia.dto.CourseReqDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.StudentReqDto;
 import com.dyslexia.dyslexia.dto.TeacherDto;
+import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.enums.Grade;
+import com.dyslexia.dyslexia.mapper.custom.GradeMapper;
+import com.dyslexia.dyslexia.mapper.custom.InterestMapper;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.dyslexia.dyslexia.service.CourseInfoService;
 import com.dyslexia.dyslexia.service.CourseService;
@@ -39,6 +43,49 @@ class DyslexiaApplicationTests {
   private CourseService courseService;
   @Autowired
   private CourseInfoService courseInfoService;
+  @Autowired
+  private GradeMapper gradeMapper;
+  @Autowired
+  private InterestMapper interestMapper;
+
+
+  @Test
+  void testToEnum() {
+    Grade grade = gradeMapper.toEnum("4학년");
+    assertEquals(Grade.GRADE_4, grade);
+  }
+
+  @Test
+  void testToLabel() {
+    String label = gradeMapper.toLabel(Grade.GRADE_6);
+    assertEquals("6학년", label);
+  }
+
+  @Test
+  void testToEnumWithInvalidLabel() {
+    assertThrows(IllegalArgumentException.class, () -> {
+      gradeMapper.toEnum("7학년"); // 없는 값
+    });
+  }
+
+  @Test
+  void testToEntityList() {
+    List<String> names = List.of("독서", "코딩");
+    List<Interest> entities = interestMapper.toEntityList(names);
+
+    assertEquals(2, entities.size());
+    assertEquals("독서", entities.get(0).getName());
+  }
+
+  @Test
+  void testToStringList() {
+    List<Interest> interests = List.of(Interest.builder().name("수학").build(),
+        Interest.builder().name("과학").build());
+
+    List<String> names = interestMapper.toStringList(interests);
+
+    assertEquals(List.of("수학", "과학"), names);
+  }
 
   // ✅ 공통 생성 메서드들
 
