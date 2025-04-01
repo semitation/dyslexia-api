@@ -11,19 +11,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "students")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Student {
 
   @Id
@@ -46,4 +41,16 @@ public class Student {
   private String state;
 
   private String profileImageUrl;
+
+  @Builder
+  public Student(String clientId, Teacher teacher, Grade grade, String type, String interested,
+      String state, String profileImageUrl) {
+    this.clientId = clientId;
+    this.teacher = teacher;
+    this.grade = grade;
+    this.type = type;
+    this.interested = interested;
+    this.state = state;
+    this.profileImageUrl = profileImageUrl;
+  }
 }

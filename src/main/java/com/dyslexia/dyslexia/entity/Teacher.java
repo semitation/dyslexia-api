@@ -5,19 +5,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "teachers")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Teacher {
 
   @Id
@@ -29,4 +24,11 @@ public class Teacher {
   private String organization;
 
   private String profileImageUrl;
+
+  @Builder
+  public Teacher(String clientId, String organization, String profileImageUrl) {
+    this.clientId = clientId;
+    this.organization = organization;
+    this.profileImageUrl = profileImageUrl;
+  }
 }

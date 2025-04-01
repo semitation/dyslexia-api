@@ -10,21 +10,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "courses")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Course {
 
   @Id
@@ -49,4 +45,22 @@ public class Course {
   private LocalDateTime updatedAt;
 
   private String state;
+
+  @Builder
+  public Course(Teacher teacher, String subjectPath, String title, String type, Grade grade,
+      String state) {
+    this.teacher = teacher;
+    this.subjectPath = subjectPath;
+    this.title = title;
+    this.type = type;
+    this.grade = grade;
+    this.createdAt = LocalDateTime.now();
+    this.updatedAt = LocalDateTime.now();
+    this.state = state;
+  }
+
+  @PreUpdate
+  public void preUpdate() {
+    this.updatedAt = LocalDateTime.now();
+  }
 }

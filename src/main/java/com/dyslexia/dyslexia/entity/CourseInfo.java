@@ -8,19 +8,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
 @Table(name = "courseInfo")
 @Getter
-@Setter
 @NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class CourseInfo {
 
   @Id
@@ -44,4 +39,15 @@ public class CourseInfo {
   private Integer page;
 
   private Integer maxPage;
+
+  @Builder
+  public CourseInfo(Course course, Student student, Teacher teacher, Integer learningTime,
+      Integer page, Integer maxPage) {
+    this.course = course;
+    this.student = student;
+    this.teacher = teacher;
+    this.learningTime = learningTime;
+    this.page = page;
+    this.maxPage = maxPage;
+  }
 }
