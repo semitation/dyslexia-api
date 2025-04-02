@@ -17,6 +17,9 @@ configurations {
 	compileOnly {
 		extendsFrom annotationProcessor
 	}
+	
+	// slf4j-simple과 Logback 충돌 문제 해결
+	all*.exclude group: 'org.slf4j', module: 'slf4j-simple'
 }
 
 repositories {
@@ -37,6 +40,7 @@ dependencies {
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
+	implementation 'io.github.sashirestela:simple-openai:3.19.4'
 }
 
 tasks.named('test') {
