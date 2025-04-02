@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class OpenAIResponse {
+public class AIResponseDto {
     private String output;
     private String message;
+    private String status;
 } 

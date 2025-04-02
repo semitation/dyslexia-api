@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.dyslexia.dyslexia.dto.OpenAIResponse;
+import com.dyslexia.dyslexia.dto.AIResponseDto;
 import com.dyslexia.dyslexia.service.OpenAIService;
 
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ public class OpenAIController {
     private final OpenAIService openAIService;
 
     @PostMapping("/generate-text")
-    public OpenAIResponse generateText(@RequestBody String prompt) {
+    public AIResponseDto generateText(@RequestBody String prompt) {
         return openAIService.generateText(prompt);
     }
 }
