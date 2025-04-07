@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.MatchResponseDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.StudentReqDto;
 import com.dyslexia.dyslexia.service.StudentService;
@@ -35,5 +36,10 @@ public class StudentController {
   @GetMapping
   public ResponseEntity<List<StudentDto>> getStudentsByTeacher(@RequestParam Long teacherId) {
     return ResponseEntity.ok(studentService.getStudentsByTeacher(teacherId));
+  }
+
+  @PostMapping("/match/{id}")
+  public ResponseEntity<MatchResponseDto> matchByCode(@PathVariable Long id, @RequestParam String code) {
+    return ResponseEntity.ok(studentService.matchByCode(id, code));
   }
 }

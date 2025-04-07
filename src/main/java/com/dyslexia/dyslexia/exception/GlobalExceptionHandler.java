@@ -1,5 +1,7 @@
 package com.dyslexia.dyslexia.exception;
 
+import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
+import com.dyslexia.dyslexia.exception.notfound.TeacherNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.validation.FieldError;
@@ -56,5 +58,19 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex) {
     log.error("Unexpected Exception", ex);
     return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "알 수 없는 오류가 발생했습니다.");
+  }
+
+  @ExceptionHandler(TeacherNotFoundException.class)
+  public ResponseEntity<ApiErrorResponse> handleTeacherNotFoundException(
+      TeacherNotFoundException ex) {
+    log.warn("Teacher not found: {}", ex.getMessage());
+    return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+  }
+
+  @ExceptionHandler(StudentNotFoundException.class)
+  public ResponseEntity<ApiErrorResponse> handleStudentNotFoundException(
+      StudentNotFoundException ex) {
+    log.warn("Student not found: {}", ex.getMessage());
+    return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
   }
 }

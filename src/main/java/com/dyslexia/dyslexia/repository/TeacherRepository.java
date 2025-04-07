@@ -6,4 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TeacherRepository extends JpaRepository<Teacher, Long> {
   Optional<Teacher> findByClientId(String clientId);
+
+    boolean existsByMatchCodeAndIdNot(String matchCode, Long id);
+
+  Optional<Teacher> findByMatchCode(String code);
 }
