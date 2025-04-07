@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.TeacherCodeDto;
 import com.dyslexia.dyslexia.dto.TeacherDto;
 import com.dyslexia.dyslexia.service.TeacherService;
 import lombok.RequiredArgsConstructor;
@@ -34,5 +35,11 @@ public class TeacherController {
   public ResponseEntity<TeacherDto> getByClientId(@RequestParam String clientId) {
     return teacherService.getTeacherByClientId(clientId).map(ResponseEntity::ok)
         .orElse(ResponseEntity.notFound().build());
+  }
+
+  @GetMapping("/code/{id}")
+  public ResponseEntity<TeacherCodeDto> getCodeById(@PathVariable long id)
+      throws NotFoundException {
+    return ResponseEntity.ok(teacherService.getCodeById(id));
   }
 }

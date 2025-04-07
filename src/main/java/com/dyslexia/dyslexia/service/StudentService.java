@@ -1,12 +1,16 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.dto.MatchResponseDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.StudentReqDto;
 import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.enums.Grade;
+import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
+import com.dyslexia.dyslexia.exception.notfound.TeacherNotFoundException;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
+import com.dyslexia.dyslexia.mapper.TeacherMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
@@ -22,6 +26,7 @@ public class StudentService {
   private final StudentRepository studentRepository;
   private final StudentMapper studentMapper;
   private final TeacherRepository teacherRepository;
+  private final TeacherMapper teacherMapper;
 
   private final InterestRepository interestRepository;
 
@@ -51,5 +56,16 @@ public class StudentService {
 
   public List<StudentDto> getStudentsByTeacher(Long teacherId) {
     return studentRepository.findByTeacherId(teacherId).stream().map(studentMapper::toDto).toList();
+  }
+
+  public MatchResponseDto matchByCode(Long id, String code) {
+    Teacher teacher = teacherRepository.findByMatchCode(code)
+        .orElseThrow(() -> new TeacherNotFoundException("코드 '" + code + "'에 해당하는 교사를 찾을 수 없습니다."));
+
+    Student student = studentRepository.findById(id)
+        .orElseThrow(() -> new StudentNotFoundException("학생을 찾을 수 없습니다."));
+
+    teacher.addStudent(student);
+    return teacherMapper.toMatchResponseDto(teacher);
   }
 }

@@ -15,6 +15,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,7 +23,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "students")
 @Getter
-@NoArgsConstructor
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Student {
 
 
@@ -57,5 +58,13 @@ public class Student {
     this.state = state;
     this.profileImageUrl = profileImageUrl;
     this.interests = interests;
+  }
+
+  public void setTeacher(Teacher teacher) {
+    this.teacher = teacher;
+
+    if (teacher != null && !teacher.getStudents().contains(this)) {
+      teacher.getStudents().add(this);
+    }
   }
 }
