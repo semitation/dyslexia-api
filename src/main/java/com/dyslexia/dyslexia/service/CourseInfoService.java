@@ -11,6 +11,7 @@ import com.dyslexia.dyslexia.repository.CourseInfoRepository;
 import com.dyslexia.dyslexia.repository.CourseRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -26,6 +27,7 @@ public class CourseInfoService {
   private final StudentRepository studentRepository;
   private final TeacherRepository teacherRepository;
 
+  @Transactional
   public CourseInfoDto saveCourseInfo(CourseInfoReqDto dto) {
 
     Course course = courseRepository.findById(dto.getCourseId())

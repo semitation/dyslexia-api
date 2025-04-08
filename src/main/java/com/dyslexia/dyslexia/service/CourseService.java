@@ -7,6 +7,7 @@ import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.mapper.CourseMapper;
 import com.dyslexia.dyslexia.repository.CourseRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
+import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -20,6 +21,7 @@ public class CourseService {
   private final CourseMapper courseMapper;
   private final TeacherRepository teacherRepository;
 
+  @Transactional
   public CourseDto saveCourse(CourseReqDto dto) {
     Teacher teacher = teacherRepository.findById(dto.getTeacherId())
         .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
