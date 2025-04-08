@@ -7,19 +7,20 @@ import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.mapper.CourseMapper;
 import com.dyslexia.dyslexia.repository.CourseRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
-import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class CourseService {
 
   private final CourseRepository courseRepository;
-  private final CourseMapper courseMapper;
   private final TeacherRepository teacherRepository;
+  private final CourseMapper courseMapper;
 
   @Transactional
   public CourseDto saveCourse(CourseReqDto dto) {

@@ -14,22 +14,22 @@ import com.dyslexia.dyslexia.mapper.TeacherMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
-import jakarta.transaction.Transactional;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class StudentService {
 
   private final StudentRepository studentRepository;
-  private final StudentMapper studentMapper;
   private final TeacherRepository teacherRepository;
-  private final TeacherMapper teacherMapper;
-
   private final InterestRepository interestRepository;
+  private final StudentMapper studentMapper;
+  private final TeacherMapper teacherMapper;
 
   @Transactional
   public StudentDto saveStudent(StudentReqDto dto) {
