@@ -41,6 +41,8 @@ dependencies {
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.6'
 	implementation 'io.github.sashirestela:simple-openai:3.19.4'
+	implementation 'net.sourceforge.tess4j:tess4j:5.5.0'
+	implementation 'org.apache.pdfbox:pdfbox:2.0.30'
 }
 
 tasks.named('test') {

@@ -18,18 +18,20 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class StudentService {
 
   private final StudentRepository studentRepository;
-  private final StudentMapper studentMapper;
   private final TeacherRepository teacherRepository;
+  private final InterestRepository interestRepository;
+  private final StudentMapper studentMapper;
   private final TeacherMapper teacherMapper;
 
-  private final InterestRepository interestRepository;
-
+  @Transactional
   public StudentDto saveStudent(StudentReqDto dto) {
     Teacher teacher = teacherRepository.findById(dto.getTeacherId())
         .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
