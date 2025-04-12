@@ -3,6 +3,7 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.TeacherCodeDto;
 import com.dyslexia.dyslexia.dto.TeacherDto;
 import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.exception.notfound.TeacherNotFoundException;
 import com.dyslexia.dyslexia.mapper.TeacherMapper;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import java.util.Optional;
@@ -31,15 +32,22 @@ public class TeacherService {
     return teacherMapper.toDto(teacher);
   }
 
-  public TeacherDto getById(Long id) throws NotFoundException {
-    return teacherRepository.findById(id).map(teacherMapper::toDto)
-        .orElseThrow(NotFoundException::new);
+  public TeacherDto getById(Long id) {
+    Teacher teacher = teacherRepository.findById(id)
+        .orElseThrow(() -> new TeacherNotFoundException("아이디 '" + id + "'에 해당하는 교사를 찾을 수 없습니다."));
+
+    return teacherMapper.toDto(teacher);
   }
 
-  public Optional<TeacherDto> getTeacherByClientId(String clientId) {
-    return teacherRepository.findByClientId(clientId).map(teacherMapper::toDto);
+  public TeacherDto getTeacherByClientId(String clientId) {
+    Teacher teacher = teacherRepository.findByClientId(clientId)
+        .orElseThrow(() -> new TeacherNotFoundException("클라이언트 '" + clientId + "'에 해당하는 교사를 찾을 수 없습니다."));
+
+    return teacherMapper.toDto(teacher);
+
   }
 
+  @Transactional(readOnly = true)
   public TeacherCodeDto getCodeById(long id) throws NotFoundException {
     Teacher teacher = teacherRepository.findById(id).orElseThrow(NotFoundException::new);
 

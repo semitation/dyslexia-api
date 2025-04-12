@@ -18,6 +18,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +33,7 @@ public class StudentService {
 
   public StudentDto saveStudent(StudentReqDto dto) {
     Teacher teacher = teacherRepository.findById(dto.getTeacherId())
-        .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
+        .orElseThrow(() -> new TeacherNotFoundException("아이디 '" + dto.getTeacherId() + "'에 해당하는 교사를 찾을 수 없습니다."));
 
     Grade grade = Grade.fromLabel(dto.getGradeLabel());
 
@@ -58,6 +59,7 @@ public class StudentService {
     return studentRepository.findByTeacherId(teacherId).stream().map(studentMapper::toDto).toList();
   }
 
+  @Transactional
   public MatchResponseDto matchByCode(Long id, String code) {
     Teacher teacher = teacherRepository.findByMatchCode(code)
         .orElseThrow(() -> new TeacherNotFoundException("코드 '" + code + "'에 해당하는 교사를 찾을 수 없습니다."));

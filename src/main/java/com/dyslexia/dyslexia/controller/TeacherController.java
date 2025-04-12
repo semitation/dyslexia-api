@@ -27,14 +27,13 @@ public class TeacherController {
   }
 
   @GetMapping("/{id}")
-  public ResponseEntity<TeacherDto> getById(@PathVariable long id) throws NotFoundException {
+  public ResponseEntity<TeacherDto> getById(@PathVariable long id) {
     return ResponseEntity.ok(teacherService.getById(id));
   }
 
   @GetMapping
   public ResponseEntity<TeacherDto> getByClientId(@RequestParam String clientId) {
-    return teacherService.getTeacherByClientId(clientId).map(ResponseEntity::ok)
-        .orElse(ResponseEntity.notFound().build());
+    return ResponseEntity.ok(teacherService.getTeacherByClientId(clientId));
   }
 
   @GetMapping("/code/{id}")
