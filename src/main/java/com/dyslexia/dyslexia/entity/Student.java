@@ -72,6 +72,11 @@ public class Student {
   }
 
   public void addInterests(List<Interest> interests) {
+
+    if (this.interests == null) {
+      this.interests = new ArrayList<>();
+    }
+
     for (Interest interest : interests) {
       if (!this.interests.contains(interest)) {
         this.interests.add(interest);
