@@ -1,8 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 
-import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.UserType;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

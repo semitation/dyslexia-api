@@ -5,7 +5,6 @@ import com.dyslexia.dyslexia.dto.SignUpResponseDto;
 import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Teacher;
-import java.util.List;
 import com.dyslexia.dyslexia.enums.UserType;
 import com.dyslexia.dyslexia.exception.UserAlreadyExistsException;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
@@ -14,12 +13,11 @@ import com.dyslexia.dyslexia.repository.InterestRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -33,7 +31,6 @@ public class UserService {
 
     @Transactional
     public SignUpResponseDto signUp(SignUpRequestDto dto) {
-        log.info("회원가입 요청 처리 중: 사용자 유형={}", dto.getUserType());
 
         if (UserType.TEACHER == dto.getUserType()) {
             return registerTeacher(dto);
@@ -83,8 +80,6 @@ public class UserService {
         String accessToken = jwtTokenProvider.createAccessToken(student.getClientId(),
             UserType.STUDENT.name());
         String refreshToken = jwtTokenProvider.createRefreshToken(student.getClientId());
-
-        log.info("학생 등록 성공: ID={}", student.getId());
 
         return SignUpResponseDto.builder().id(student.getId()).name(student.getName())
             .userType(UserType.STUDENT).accessToken(accessToken).refreshToken(refreshToken).build();

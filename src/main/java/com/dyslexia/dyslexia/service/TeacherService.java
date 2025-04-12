@@ -6,7 +6,6 @@ import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.exception.notfound.TeacherNotFoundException;
 import com.dyslexia.dyslexia.mapper.TeacherMapper;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.stereotype.Service;
@@ -18,19 +17,6 @@ public class TeacherService {
 
   private final TeacherRepository teacherRepository;
   private final TeacherMapper teacherMapper;
-
-  @Transactional
-  public TeacherDto saveTeacher(TeacherDto dto) {
-
-    Teacher teacher = teacherRepository.save(teacherMapper.toEntity(dto));
-    teacher.generateMatchCode();
-
-    while (teacherRepository.existsByMatchCodeAndIdNot(teacher.getMatchCode(), teacher.getId())) {
-      teacher.generateMatchCode();
-    }
-
-    return teacherMapper.toDto(teacher);
-  }
 
   public TeacherDto getById(Long id) {
     Teacher teacher = teacherRepository.findById(id)
