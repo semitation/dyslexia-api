@@ -73,4 +73,11 @@ public class GlobalExceptionHandler {
     log.warn("Student not found: {}", ex.getMessage());
     return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
   }
+
+  @ExceptionHandler(UserAlreadyExistsException.class)
+  public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(
+      UserAlreadyExistsException ex) {
+    log.warn("Teacher already exists: {}", ex.getMessage());
+    return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
+  }
 }

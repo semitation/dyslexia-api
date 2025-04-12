@@ -8,6 +8,7 @@ public interface TeacherRepository extends JpaRepository<Teacher, Long> {
   Optional<Teacher> findByClientId(String clientId);
 
     boolean existsByMatchCodeAndIdNot(String matchCode, Long id);
+    boolean existsByClientId(String clientId);
 
   Optional<Teacher> findByMatchCode(String code);
 }
