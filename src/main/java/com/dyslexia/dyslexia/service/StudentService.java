@@ -17,11 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class StudentService {
 
   private final StudentRepository studentRepository;
-  private final StudentMapper studentMapper;
   private final TeacherRepository teacherRepository;
+  private final StudentMapper studentMapper;
   private final TeacherMapper teacherMapper;
 
   public StudentDto getById(Long id) {
