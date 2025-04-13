@@ -14,4 +14,4 @@ up:
 down:
 	@docker compose -f docker-compose.yml -p test down
 
-re: down build copy up
+re: down up
