@@ -28,6 +28,8 @@ public class Teacher {
 
   private String clientId;
 
+  private String name;
+
   private String organization;
 
   private String profileImageUrl;
@@ -39,8 +41,9 @@ public class Teacher {
   private List<Student> students = new ArrayList<>();
 
   @Builder
-  public Teacher(String clientId, String organization, String profileImageUrl) {
+  public Teacher(String clientId, String name, String organization, String profileImageUrl) {
     this.clientId = clientId;
+    this.name = name;
     this.organization = organization;
     this.profileImageUrl = profileImageUrl;
   }

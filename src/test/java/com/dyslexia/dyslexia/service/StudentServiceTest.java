@@ -45,7 +45,7 @@ class StudentServiceTest {
         Long studentId = 1L;
         String matchCode = "ABC123";
 
-        Teacher teacher = new Teacher("teacher1", "테스트학교", "http://example.com/profile.jpg");
+        Teacher teacher = new Teacher("teacher1", "테스트교사", "테스트학교", "http://example.com/profile.jpg");
         ReflectionTestUtils.setField(teacher, "id", 1L);
         ReflectionTestUtils.setField(teacher, "matchCode", matchCode);
 
@@ -102,7 +102,7 @@ class StudentServiceTest {
         Long invalidStudentId = 999L;
         String matchCode = "ABC123";
 
-        Teacher teacher = new Teacher("teacher1", "테스트학교", "http://example.com/profile.jpg");
+        Teacher teacher = new Teacher("teacher1", "테스트교사", "테스트학교", "http://example.com/profile.jpg");
         ReflectionTestUtils.setField(teacher, "matchCode", matchCode);
 
         when(teacherRepository.findByMatchCode(matchCode)).thenReturn(Optional.of(teacher));

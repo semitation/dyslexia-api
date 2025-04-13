@@ -33,6 +33,8 @@ public class Student {
 
   private String clientId;
 
+  private String name;
+
   @ManyToOne(fetch = FetchType.LAZY)
   @JoinColumn(name = "teacherId")
   private Teacher teacher;
@@ -49,9 +51,10 @@ public class Student {
   private List<Interest> interests = new ArrayList<>();
 
   @Builder
-  public Student(String clientId, Teacher teacher, Grade grade, String type, String state,
+  public Student(String clientId, String name, Teacher teacher, Grade grade, String type, String state,
       String profileImageUrl, List<Interest> interests) {
     this.clientId = clientId;
+    this.name = name;
     this.teacher = teacher;
     this.grade = grade;
     this.type = type;
@@ -65,6 +68,19 @@ public class Student {
 
     if (teacher != null && !teacher.getStudents().contains(this)) {
       teacher.getStudents().add(this);
+    }
+  }
+
+  public void addInterests(List<Interest> interests) {
+
+    if (this.interests == null) {
+      this.interests = new ArrayList<>();
+    }
+
+    for (Interest interest : interests) {
+      if (!this.interests.contains(interest)) {
+        this.interests.add(interest);
+      }
     }
   }
 }
