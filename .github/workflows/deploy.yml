@@ -32,7 +32,7 @@ jobs:
         run: |
           scp -o StrictHostKeyChecking=no ./build/libs/dyslexia-0.0.1-SNAPSHOT.jar hbnu@${{ secrets.DYSLEXIA_HOST }}:/home/hbnu/app/app.jar
           scp -o StrictHostKeyChecking=no ./docker-compose.yml hbnu@${{ secrets.DYSLEXIA_HOST }}:/home/hbnu/app/docker-compose.yml
-      
+          scp -o StrictHostKeyChecking=no ./Makefile hbnu@${{ secrets.DYSLEXIA_HOST }}:/home/hbnu/app/Makefile
 
       - name: Restart Docker on Server
         run: |
