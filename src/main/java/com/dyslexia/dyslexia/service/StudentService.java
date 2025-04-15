@@ -2,6 +2,7 @@ package com.dyslexia.dyslexia.service;
 
 import com.dyslexia.dyslexia.dto.MatchResponseDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
+import com.dyslexia.dyslexia.dto.TeacherDto;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
@@ -46,5 +47,12 @@ public class StudentService {
 
     teacher.addStudent(student);
     return teacherMapper.toMatchResponseDto(teacher);
+  }
+
+  public StudentDto getByClientId(String clientId) {
+    Student student = studentRepository.findByClientId(clientId)
+        .orElseThrow(() -> new TeacherNotFoundException("클라이언트 '" + clientId + "'에 해당하는 학생을 찾을 수 없습니다."));
+
+    return studentMapper.toDto(student);
   }
 }

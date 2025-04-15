@@ -3,6 +3,7 @@ package com.dyslexia.dyslexia.controller;
 import com.dyslexia.dyslexia.dto.MatchResponseDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.service.StudentService;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +23,11 @@ public class StudentController {
   @GetMapping("/{id}")
   public ResponseEntity<StudentDto> getById(@PathVariable Long id) {
     return ResponseEntity.ok(studentService.getById(id));
+  }
+
+  @GetMapping
+  public ResponseEntity<StudentDto> getByClientId(@RequestParam String clientId) {
+    return ResponseEntity.ok(studentService.getByClientId(clientId));
   }
 
   @PostMapping("/match/{id}")
