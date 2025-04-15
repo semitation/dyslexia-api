@@ -45,7 +45,7 @@ public class TeacherController {
 
   @Operation(summary = "id로 담당 학생 조회")
   @GetMapping("/{teacherId}/students")
-  public ResponseEntity<List<StudentDto>> getStudentsByTeacher(@PathVariable Long teacherId) {
+  public ResponseEntity<List<StudentDto>> getStudentsByTeacherId(@PathVariable Long teacherId) {
     return ResponseEntity.ok(studentService.getStudentsByTeacher(teacherId));
   }
 }
