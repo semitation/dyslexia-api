@@ -20,16 +20,19 @@ public class StudentController {
 
   private final StudentService studentService;
 
+  @Operation(summary = "id로 학생 조회")
   @GetMapping("/{id}")
   public ResponseEntity<StudentDto> getById(@PathVariable Long id) {
     return ResponseEntity.ok(studentService.getById(id));
   }
 
+  @Operation(summary = "client id로 학생 조회")
   @GetMapping
   public ResponseEntity<StudentDto> getByClientId(@RequestParam String clientId) {
     return ResponseEntity.ok(studentService.getByClientId(clientId));
   }
 
+  @Operation(summary = "매칭 코드로 교사 매칭")
   @PostMapping("/match/{id}")
   public ResponseEntity<MatchResponseDto> matchByCode(@PathVariable Long id, @RequestParam String code) {
     return ResponseEntity.ok(studentService.matchByCode(id, code));
