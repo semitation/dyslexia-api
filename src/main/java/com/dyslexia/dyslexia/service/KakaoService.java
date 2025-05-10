@@ -51,17 +51,19 @@ public class KakaoService {
 
         UserType userType = determineUserType(clientId);
 
+
+
         if (userType != UserType.UNREGISTERED) {
-            String jwtAccessToken = jwtTokenProvider.createAccessToken(clientId, userType.name());
-            String jwtRefreshToken = jwtTokenProvider.createRefreshToken(clientId);
+            String newAccessToken = jwtTokenProvider.createAccessToken(clientId, userType.name());
+            String newRefreshToken = jwtTokenProvider.createRefreshToken(clientId);
 
             return AuthResponseDto.builder()
                 .registered(true)
                 .clientId(clientId)
                 .nickname(nickname)
                 .userType(userType.name())
-                .accessToken(jwtAccessToken)
-                .refreshToken(jwtRefreshToken)
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
                 .build();
         }
 
@@ -92,6 +94,7 @@ public class KakaoService {
             request,
             String.class
         );
+        log.info(response.getBody());
 
         try {
             JsonNode jsonNode = objectMapper.readTree(response.getBody());
@@ -115,6 +118,7 @@ public class KakaoService {
             request,
             String.class
         );
+        log.info(response.getBody());
 
         try {
             return objectMapper.readTree(response.getBody());

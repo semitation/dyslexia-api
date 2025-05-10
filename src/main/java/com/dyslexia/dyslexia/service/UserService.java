@@ -2,6 +2,9 @@ package com.dyslexia.dyslexia.service;
 
 import com.dyslexia.dyslexia.dto.SignUpRequestDto;
 import com.dyslexia.dyslexia.dto.SignUpResponseDto;
+import com.dyslexia.dyslexia.dto.UserInfoDto;
+import com.dyslexia.dyslexia.dto.StudentInfoDto;
+import com.dyslexia.dyslexia.dto.TeacherInfoDto;
 import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Teacher;
@@ -83,5 +86,22 @@ public class UserService {
 
         return SignUpResponseDto.builder().id(student.getId()).name(student.getName())
             .userType(UserType.STUDENT).accessToken(accessToken).refreshToken(refreshToken).build();
+    }
+
+    @Transactional(readOnly = true)
+    public UserInfoDto getMyInfo(String clientId, UserType userType) {
+        return switch (userType) {
+            case STUDENT -> {
+                Student student = studentRepository.findByClientId(clientId)
+                    .orElseThrow(() -> new RuntimeException("Student not found"));
+                yield new StudentInfoDto(student);
+            }
+            case TEACHER -> {
+                Teacher teacher = teacherRepository.findByClientId(clientId)
+                    .orElseThrow(() -> new RuntimeException("Teacher not found"));
+                yield new TeacherInfoDto(teacher);
+            }
+            default -> throw new RuntimeException("Invalid user type");
+        };
     }
 }
