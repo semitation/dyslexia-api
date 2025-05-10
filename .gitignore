@@ -39,3 +39,6 @@ out/
 .idea/
 
 app.jar
+docs.json
+review.md
+generated
