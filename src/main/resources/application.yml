@@ -15,28 +15,15 @@ spring:
     hibernate:
       ddl-auto: update
       default_batch_fetch_size: 100
-  security:
-    oauth2:
-      client:
-        registration:
-          kakao:
-            client-id: ${KAKAO_CLIENT_ID}
-            client-secret: ${KAKAO_CLIENT_SECRET}
-            redirect-uri: ${KAKAO_REDIRECT_URI}
-            client-authentication-method: client_secret_post
-            authorization-grant-type: authorization_code
-            client-name: kakao
-            scope:
-              - profile_nickname
-        provider:
-          kakao:
-            authorization-uri: https://kauth.kakao.com/oauth/authorize
-            token-uri: https://kauth.kakao.com/oauth/token
-            user-info-uri: https://kapi.kakao.com/v2/user/me
-            user-name-attribute: id
-
   jwt:
     secret: ${JWT_SECRET}
+
+kakao:
+  client:
+    id: ${KAKAO_CLIENT_ID}
+    secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: ${KAKAO_REDIRECT_URI}
+
 server:
   servlet:
     context-path: /api
@@ -48,5 +35,9 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    enabled: true
   packages-to-scan: com.dyslexia.dyslexia.controller
   default-produces-media-type: application/json
+  paths-to-match:
+    - /**
+  show-actuator: true
