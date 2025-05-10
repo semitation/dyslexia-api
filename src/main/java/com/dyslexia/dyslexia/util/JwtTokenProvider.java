@@ -16,56 +16,61 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Date;
+import java.security.Key;
 
 @Component
 @Slf4j
 public class JwtTokenProvider {
 
-    @Value("${spring.jwt.secret}")
-    private String secret;
-
     private static final long ACCESS_TOKEN_VALIDITY = 1000L * 60 * 60;
     private static final long REFRESH_TOKEN_VALIDITY = 1000L * 60 * 60 * 24 * 30;
 
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(
-            Base64.getEncoder().encode(secret.getBytes(StandardCharsets.UTF_8))
-        );
+    private final Key key;
+    private final long accessTokenValidityInMilliseconds;
+    private final long refreshTokenValidityInMilliseconds;
+
+    public JwtTokenProvider(
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.access-token-validity-in-seconds}") long accessTokenValidityInSeconds,
+            @Value("${jwt.refresh-token-validity-in-seconds}") long refreshTokenValidityInSeconds
+    ) {
+        this.key = Keys.hmacShaKeyFor(secret.getBytes());
+        this.accessTokenValidityInMilliseconds = accessTokenValidityInSeconds * 1000;
+        this.refreshTokenValidityInMilliseconds = refreshTokenValidityInSeconds * 1000;
     }
 
-    public String createAccessToken(String clientId, String role) {
-        return createToken(clientId, role, ACCESS_TOKEN_VALIDITY);
+    public String createAccessToken(String clientId, String userType) {
+        Date now = new Date();
+        Date validity = new Date(now.getTime() + accessTokenValidityInMilliseconds);
+
+        return Jwts.builder()
+            .setSubject(clientId)
+            .claim("userType", userType)
+            .setIssuedAt(now)
+            .setExpiration(validity)
+            .signWith(key, SignatureAlgorithm.HS256)
+            .compact();
     }
 
     public String createRefreshToken(String clientId) {
-        return createToken(clientId, null, REFRESH_TOKEN_VALIDITY);
-    }
-
-    private String createToken(String clientId, String role, long validityTime) {
-        Claims claims = Jwts.claims().setSubject(clientId);
-        if (role != null) {
-            claims.put("role", role);
-        }
-
         Date now = new Date();
-        Date validity = new Date(now.getTime() + validityTime);
+        Date validity = new Date(now.getTime() + refreshTokenValidityInMilliseconds);
 
         return Jwts.builder()
-            .setClaims(claims)
+            .setSubject(clientId)
             .setIssuedAt(now)
             .setExpiration(validity)
-            .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+            .signWith(key, SignatureAlgorithm.HS256)
             .compact();
     }
 
     public boolean validateToken(String token) {
         try {
-            Jws<Claims> claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+            Jwts.parserBuilder()
+                .setSigningKey(key)
                 .build()
                 .parseClaimsJws(token);
-
-            return !claims.getBody().getExpiration().before(new Date());
+            return true;
         } catch (Exception e) {
             log.error("Invalid token: {}", e.getMessage());
             return false;
@@ -74,20 +79,21 @@ public class JwtTokenProvider {
 
     public String getClientId(String token) {
         return Jwts.parserBuilder()
-            .setSigningKey(getSigningKey())
+            .setSigningKey(key)
             .build()
             .parseClaimsJws(token)
             .getBody()
             .getSubject();
     }
 
-    public String getRole(String token) {
-        return Jwts.parserBuilder()
-            .setSigningKey(getSigningKey())
+    public String getUserType(String token) {
+        Claims claims = Jwts.parserBuilder()
+            .setSigningKey(key)
             .build()
             .parseClaimsJws(token)
-            .getBody()
-            .get("role", String.class);
+            .getBody();
+        
+        return claims.get("userType", String.class);
     }
 
     public String resolveToken(HttpServletRequest request) {

@@ -15,8 +15,10 @@ spring:
     hibernate:
       ddl-auto: update
       default_batch_fetch_size: 100
-  jwt:
-    secret: ${JWT_SECRET}
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-in-seconds: 3600  # 1시간
+  refresh-token-validity-in-seconds: 2592000  # 30일
 
 kakao:
   client:
