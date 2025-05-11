@@ -1,13 +1,11 @@
 package com.dyslexia.dyslexia.entity;
 
 import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
-import org.hibernate.annotations.Type;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.vladmihalcea.hibernate.type.json.JsonBinaryType;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
