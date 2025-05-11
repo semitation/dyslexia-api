@@ -15,9 +15,14 @@ spring:
     hibernate:
       ddl-auto: update
       default_batch_fetch_size: 100
+      
+app:
+  upload:
+    dir: ${user.home}/${UPLOAD_DIR}
+    
 jwt:
   secret: ${JWT_SECRET}
-  access-token-validity-in-seconds: 3600  # 1시간
+  access-token-validity-in-seconds: 604800  # 1주일
   refresh-token-validity-in-seconds: 2592000  # 30일
 
 kakao:
@@ -43,3 +48,8 @@ springdoc:
   paths-to-match:
     - /**
   show-actuator: true
+
+ai:
+  api:
+    url: https://api.openai.com/v1/chat/completions
+    key: ${OPENAI_API_KEY}
