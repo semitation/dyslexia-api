@@ -1,29 +1,31 @@
 package com.dyslexia.dyslexia.service;
 
-import com.dyslexia.dyslexia.entity.*;
+import com.dyslexia.dyslexia.entity.Document;
+import com.dyslexia.dyslexia.entity.Page;
+import com.dyslexia.dyslexia.entity.PageImage;
+import com.dyslexia.dyslexia.entity.PageTip;
+import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
-import com.dyslexia.dyslexia.enums.ImageType;
-import com.dyslexia.dyslexia.enums.TermType;
-import com.dyslexia.dyslexia.repository.*;
+import com.dyslexia.dyslexia.repository.DocumentRepository;
+import com.dyslexia.dyslexia.repository.PageImageRepository;
+import com.dyslexia.dyslexia.repository.PageRepository;
+import com.dyslexia.dyslexia.repository.PageTipRepository;
+import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.Optional;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @Slf4j
@@ -44,60 +46,65 @@ public class DocumentProcessService {
     @Transactional
     public Document uploadDocument(Long teacherId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
         Teacher teacher = teacherRepository.findById(teacherId)
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
-        
+            .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+
         String originalFilename = file.getOriginalFilename();
         String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
         String filePath = storageService.store(file, uniqueFilename);
-        
+
         Document document = Document.builder()
-                .teacher(teacher)
-                .title(title)
-                .originalFilename(originalFilename)
-                .filePath(filePath)
-                .fileSize(file.getSize())
-                .mimeType(file.getContentType())
-                .grade(grade)
-                .subjectPath(subjectPath)
-                .processStatus(DocumentProcessStatus.PENDING)
-                .build();
-        
+            .teacher(teacher)
+            .title(title)
+            .originalFilename(originalFilename)
+            .filePath(filePath)
+            .fileSize(file.getSize())
+            .mimeType(file.getContentType())
+            .grade(grade)
+            .subjectPath(subjectPath)
+            .processStatus(DocumentProcessStatus.PENDING)
+            .build();
+
         document = documentRepository.save(document);
-        
+
         final Long documentId = document.getId();
-        CompletableFuture.runAsync(() -> processDocumentAsync(documentId), taskExecutor);
-        
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                CompletableFuture.runAsync(() -> processDocumentAsync(documentId), taskExecutor);
+            }
+        });
+
         return document;
     }
-    
+
     private void processDocumentAsync(Long documentId) {
         try {
             log.info("문서 ID: {}의 비동기 처리를 시작합니다.", documentId);
-            
+
             Document document = documentRepository.findById(documentId)
-                    .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
-            
+                .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+
             document.setProcessStatus(DocumentProcessStatus.PROCESSING);
             documentRepository.save(document);
-            
+
             List<String> rawPages = pdfParserService.parsePages(document.getFilePath());
             document.setPageCount(rawPages.size());
             documentRepository.save(document);
-            
+
             log.info("문서 ID: {}의 전체 페이지 수: {}", documentId, rawPages.size());
-            
+
             for (int i = 0; i < rawPages.size(); i++) {
                 int pageNumber = i + 1;
                 log.info("문서 ID: {}, 페이지 번호: {} 처리 시작", documentId, pageNumber);
                 processPage(document, pageNumber, rawPages.get(i));
                 log.info("문서 ID: {}, 페이지 번호: {} 처리 완료", documentId, pageNumber);
             }
-            
+
             document.setProcessStatus(DocumentProcessStatus.COMPLETED);
             documentRepository.save(document);
             log.info("문서 ID: {}의 모든 처리가 완료되었습니다.", documentId);
-            
+
         } catch (Exception e) {
             log.error("문서 처리 중 오류 발생: 문서 ID: {}", documentId, e);
             Document document = documentRepository.findById(documentId).orElse(null);
@@ -108,19 +115,19 @@ public class DocumentProcessService {
             }
         }
     }
-    
+
     @Transactional
     public void processPage(Document document, int pageNumber, String rawContent) {
         try {
             log.info("페이지 처리 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-            
+
             Optional<Page> existingPage = pageRepository.findByDocumentAndPageNumber(document, pageNumber);
-            if (existingPage.isPresent() && 
+            if (existingPage.isPresent() &&
                 existingPage.get().getProcessingStatus() == DocumentProcessStatus.COMPLETED) {
                 log.info("페이지가 이미 처리되었습니다: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
                 return;
             }
-            
+
             String processedContentStr = aiPromptService.processPageContent(rawContent, document.getGrade());
             com.fasterxml.jackson.databind.JsonNode processedContent;
             try {
@@ -129,12 +136,12 @@ public class DocumentProcessService {
                 log.error("JSON 변환 중 오류 발생", e);
                 throw new RuntimeException("처리된 콘텐츠를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
             }
-            
+
             String sectionTitle = aiPromptService.extractSectionTitle(rawContent);
             Integer readingLevel = aiPromptService.calculateReadingLevel(rawContent);
             Integer wordCount = aiPromptService.countWords(rawContent);
             Float complexityScore = aiPromptService.calculateComplexityScore(rawContent);
-            
+
             Page page;
             if (existingPage.isPresent()) {
                 page = existingPage.get();
@@ -142,66 +149,66 @@ public class DocumentProcessService {
                 pageRepository.save(page);
             } else {
                 page = Page.builder()
-                        .document(document)
-                        .pageNumber(pageNumber)
-                        .originalContent(rawContent)
-                        .processedContent(processedContent)
-                        .sectionTitle(sectionTitle)
-                        .readingLevel(readingLevel)
-                        .wordCount(wordCount)
-                        .complexityScore(complexityScore)
-                        .processingStatus(DocumentProcessStatus.PROCESSING)
-                        .build();
-                
+                    .document(document)
+                    .pageNumber(pageNumber)
+                    .originalContent(rawContent)
+                    .processedContent(processedContent)
+                    .sectionTitle(sectionTitle)
+                    .readingLevel(readingLevel)
+                    .wordCount(wordCount)
+                    .complexityScore(complexityScore)
+                    .processingStatus(DocumentProcessStatus.PROCESSING)
+                    .build();
+
                 page = pageRepository.save(page);
             }
-            
+
             if (existingPage.isPresent()) {
                 pageTipRepository.deleteAll(pageTipRepository.findByPageId(page.getId()));
                 pageImageRepository.deleteAll(pageImageRepository.findByPageId(page.getId()));
             }
-            
+
             log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
             List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(rawContent, document.getGrade());
             for (AIPromptService.TermInfo termInfo : terms) {
                 PageTip pageTip = PageTip.builder()
-                        .page(page)
-                        .term(termInfo.getTerm())
-                        .simplifiedExplanation(termInfo.getExplanation())
-                        .termPosition(termInfo.getPositionJson())
-                        .termType(termInfo.getTermType())
-                        .visualAidNeeded(termInfo.isVisualAidNeeded())
-                        .readAloudText(termInfo.getReadAloudText())
-                        .build();
-                
+                    .page(page)
+                    .term(termInfo.getTerm())
+                    .simplifiedExplanation(termInfo.getExplanation())
+                    .termPosition(termInfo.getPositionJson())
+                    .termType(termInfo.getTermType())
+                    .visualAidNeeded(termInfo.isVisualAidNeeded())
+                    .readAloudText(termInfo.getReadAloudText())
+                    .build();
+
                 pageTipRepository.save(pageTip);
             }
             log.info("용어 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", terms.size(), document.getId(), pageNumber);
-            
+
             log.info("이미지 생성 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
             List<AIPromptService.ImageInfo> images = aiPromptService.extractOrGenerateImages(rawContent, terms);
             for (AIPromptService.ImageInfo imageInfo : images) {
                 PageImage pageImage = PageImage.builder()
-                        .page(page)
-                        .imageUrl(imageInfo.getImageUrl())
-                        .imageType(imageInfo.getImageType())
-                        .conceptReference(imageInfo.getConceptReference())
-                        .altText(imageInfo.getAltText())
-                        .positionInPage(imageInfo.getPositionJson())
-                        .build();
-                
+                    .page(page)
+                    .imageUrl(imageInfo.getImageUrl())
+                    .imageType(imageInfo.getImageType())
+                    .conceptReference(imageInfo.getConceptReference())
+                    .altText(imageInfo.getAltText())
+                    .positionInPage(imageInfo.getPositionJson())
+                    .build();
+
                 pageImageRepository.save(pageImage);
             }
             log.info("이미지 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", images.size(), document.getId(), pageNumber);
-            
+
             page.setProcessingStatus(DocumentProcessStatus.COMPLETED);
             pageRepository.save(page);
-            
+
             log.info("페이지 처리 완료: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-            
+
         } catch (Exception e) {
             log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber, e);
-            
+
             Optional<Page> page = pageRepository.findByDocumentAndPageNumber(document, pageNumber);
             if (page.isPresent()) {
                 page.get().setProcessingStatus(DocumentProcessStatus.FAILED);
@@ -210,19 +217,19 @@ public class DocumentProcessService {
             }
         }
     }
-    
+
     @Transactional(readOnly = true)
     public DocumentProcessStatus getDocumentProcessStatus(Long documentId) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+            .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
         return document.getProcessStatus();
     }
-    
+
     @Transactional(readOnly = true)
     public int calculateDocumentProcessProgress(Long documentId) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
-        
+            .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+
         if (document.getProcessStatus() == DocumentProcessStatus.COMPLETED) {
             return 100;
         } else if (document.getProcessStatus() == DocumentProcessStatus.PENDING) {
@@ -230,9 +237,9 @@ public class DocumentProcessService {
         } else if (document.getProcessStatus() == DocumentProcessStatus.FAILED) {
             // 실패한 경우, 처리된 페이지 비율 계산
             long completedPages = pageRepository.findByDocumentId(documentId).stream()
-                    .filter(p -> p.getProcessingStatus() == DocumentProcessStatus.COMPLETED)
-                    .count();
-            
+                .filter(p -> p.getProcessingStatus() == DocumentProcessStatus.COMPLETED)
+                .count();
+
             int totalPages = document.getPageCount() != null ? document.getPageCount() : 0;
             if (totalPages > 0) {
                 return (int) ((completedPages * 100) / totalPages);
@@ -241,9 +248,9 @@ public class DocumentProcessService {
         } else {
             // PROCESSING 상태인 경우
             long completedPages = pageRepository.findByDocumentId(documentId).stream()
-                    .filter(p -> p.getProcessingStatus() == DocumentProcessStatus.COMPLETED)
-                    .count();
-            
+                .filter(p -> p.getProcessingStatus() == DocumentProcessStatus.COMPLETED)
+                .count();
+
             int totalPages = document.getPageCount() != null ? document.getPageCount() : 0;
             if (totalPages > 0) {
                 return (int) ((completedPages * 100) / totalPages);
@@ -251,21 +258,21 @@ public class DocumentProcessService {
             return 0;
         }
     }
-    
+
     @Transactional
     public Document retryDocumentProcessing(Long documentId) {
         Document document = documentRepository.findById(documentId)
-                .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
-        
+            .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+
         if (document.getProcessStatus() != DocumentProcessStatus.FAILED) {
             throw new IllegalStateException("실패한 문서만 재처리할 수 있습니다.");
         }
-        
+
         document.setProcessStatus(DocumentProcessStatus.PENDING);
         document = documentRepository.save(document);
-        
+
         CompletableFuture.runAsync(() -> processDocumentAsync(documentId), taskExecutor);
-        
+
         return document;
     }
 } 
