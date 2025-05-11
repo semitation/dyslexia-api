@@ -42,3 +42,5 @@ app.jar
 docs.json
 review.md
 generated
+.cursor
+uploads
