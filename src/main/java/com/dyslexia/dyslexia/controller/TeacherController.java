@@ -47,6 +47,7 @@ public class TeacherController {
     @ApiResponse(responseCode = "200", description = "조회 성공",
       content = @Content(schema = @Schema(implementation = TeacherDto.class))),
   })
+
   @GetMapping
   public ResponseEntity<TeacherDto> getByClientId(
       @Parameter(description = "클라이언트 ID", required = true) @RequestParam String clientId) {
