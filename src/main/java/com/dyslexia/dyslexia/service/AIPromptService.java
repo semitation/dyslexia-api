@@ -527,6 +527,51 @@ public class AIPromptService {
         }
     }
     
+    public String translateTextWithOpenAI(String text) {
+        log.info("OpenAI 번역 시작: 텍스트 길이: {}", text.length());
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", "gpt-4");
+
+            List<Map<String, String>> messages = new ArrayList<>();
+
+            Map<String, String> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", "영어 텍스트를 한국어로 자연스럽게 번역하세요. 번역 결과만 반환하세요. 설명, 마크다운, 코드블록 없이 번역문만 출력하세요.");
+            messages.add(systemMessage);
+
+            Map<String, String> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", text);
+            messages.add(userMessage);
+
+            requestBody.put("messages", messages);
+            requestBody.put("temperature", 0.3);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + aiApiKey);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+            Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
+            log.info("OpenAI 번역 응답: {}", response);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+            Map<String, Object> choice = choices.get(0);
+            Map<String, String> message = (Map<String, String>) choice.get("message");
+            String content = message.get("content");
+            if (content == null) return "";
+            content = content.trim();
+            if (content.startsWith("\"")) content = content.substring(1);
+            if (content.endsWith("\"")) content = content.substring(0, content.length() - 1);
+            return content;
+        } catch (Exception e) {
+            log.error("OpenAI 번역 실패: {}", e.getMessage());
+            throw new RuntimeException("OpenAI 번역 실패: " + e.getMessage(), e);
+        }
+    }
+    
     @Data
     @Builder
     @NoArgsConstructor
