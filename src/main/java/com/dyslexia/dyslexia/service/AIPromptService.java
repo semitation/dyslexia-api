@@ -12,11 +12,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import com.dyslexia.dyslexia.domain.pdf.Block;
+import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
 
 @Service
 @Slf4j
@@ -34,42 +39,82 @@ public class AIPromptService {
 
     public String processPageContent(String rawContent, Grade grade) {
         log.info("페이지 콘텐츠 처리 시작, 난이도: {}", grade);
-        
         try {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", "gpt-4");
-            
+
             List<Map<String, String>> messages = new ArrayList<>();
-            
+
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
-                    "텍스트를 분석하고 구조화된 JSON 형식으로 변환해 주세요. 각 섹션, 단락, 어려운 용어를 식별하고 " +
-                    "학생들이 더 쉽게 이해할 수 있도록 단순화된 형태로 조직화해 주세요.");
+            systemMessage.put("content",
+                "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
+                "아래 JSON 스키마에 맞춰 텍스트를 분석하고 반드시 JSON만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +
+                "\n" +
+                "스키마:\n" +
+                "{\n" +
+                "  \"sections\": [\n" +
+                "    {\"type\": \"heading\", \"content\": \"제목\", \"level\": 1},\n" +
+                "    {\"type\": \"paragraph\", \"content\": \"문단 내용\", \"tags\": [\"핵심 개념\"]},\n" +
+                "    {\"type\": \"difficult_term\", \"term\": \"용어\", \"tip_id\": 123, \"position\": {\"start\": 0, \"end\": 3}},\n" +
+                "    {\"type\": \"image_reference\", \"image_id\": 456, \"concept\": \"개념\"}\n" +
+                "  ],\n" +
+                "  \"layout\": {\n" +
+                "    \"font_size\": 18,\n" +
+                "    \"line_spacing\": 1.5,\n" +
+                "    \"letter_spacing\": 0.1,\n" +
+                "    \"recommended_font\": \"OpenDyslexic\"\n" +
+                "  }\n" +
+                "}\n" +
+                "\n" +
+                "sections 배열에는 다음 타입의 블록이 들어갈 수 있습니다:\n" +
+                "- heading: {type, content, level} (level=1~3)\n" +
+                "- paragraph: {type, content, tags} (tags는 선택)\n" +
+                "- difficult_term: {type, term, tip_id, position} (position={start,end})\n" +
+                "- image_reference: {type, image_id, concept}\n" +
+                "layout은 추천 레이아웃 정보를 담습니다.\n" +
+                "JSON 외의 텍스트, 마크다운, 코드블록을 포함하지 마세요. 반드시 위 구조와 동일하게 응답하세요.\n" +
+                "예시:\n" +
+                "{\n" +
+                "  \"sections\": [\n" +
+                "    {\"type\": \"heading\", \"content\": \"생태계와 환경\", \"level\": 1},\n" +
+                "    {\"type\": \"paragraph\", \"content\": \"생태계는 생물과 환경으로 이루어져 있습니다.\", \"tags\": [\"핵심 개념\"]},\n" +
+                "    {\"type\": \"difficult_term\", \"term\": \"생태계\", \"tip_id\": 123, \"position\": {\"start\": 0, \"end\": 3}},\n" +
+                "    {\"type\": \"image_reference\", \"image_id\": 456, \"concept\": \"생태계 구성\"}\n" +
+                "  ],\n" +
+                "  \"layout\": {\n" +
+                "    \"font_size\": 18,\n" +
+                "    \"line_spacing\": 1.5,\n" +
+                "    \"letter_spacing\": 0.1,\n" +
+                "    \"recommended_font\": \"OpenDyslexic\"\n" +
+                "  }\n" +
+                "}\n"
+            );
             messages.add(systemMessage);
-            
+
             Map<String, String> userMessage = new HashMap<>();
             userMessage.put("role", "user");
             userMessage.put("content", "다음 교육 자료를 난독증 학생들을 위한 구조화된 JSON으로 변환해 주세요: \n\n" + rawContent);
             messages.add(userMessage);
-            
+
             requestBody.put("messages", messages);
             requestBody.put("temperature", 0.3);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + aiApiKey);
-            
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-            
+            log.info("AI 블록생성 응답: {}", response);
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
             Map<String, Object> choice = choices.get(0);
             Map<String, String> message = (Map<String, String>) choice.get("message");
             String content = message.get("content");
-            
+
             if (content.contains("```json")) {
                 content = content.substring(content.indexOf("```json") + 7);
                 content = content.substring(0, content.indexOf("```"));
@@ -77,14 +122,11 @@ public class AIPromptService {
                 content = content.substring(content.indexOf("```") + 3);
                 content = content.substring(0, content.indexOf("```"));
             }
-            
+
             content = content.trim();
-            
             objectMapper.readValue(content, Map.class);
-            
             log.info("페이지 콘텐츠 처리 완료");
             return content;
-            
         } catch (Exception e) {
             log.error("페이지 콘텐츠 처리 중 오류 발생", e);
             throw new RuntimeException("AI를 통한 페이지 처리 중 오류가 발생했습니다.", e);
@@ -121,6 +163,7 @@ public class AIPromptService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
+            log.info("AI 블록생성 응답: {}", response);
             
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
@@ -304,54 +347,55 @@ public class AIPromptService {
     
     public List<ImageInfo> extractOrGenerateImages(String content, List<TermInfo> terms) {
         log.info("이미지 생성 시작");
-        
         try {
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("model", "gpt-4");
-            
+
             List<Map<String, String>> messages = new ArrayList<>();
-            
+
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
             systemMessage.put("content", "당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, " +
-                    "설명하는 이미지를 생성하는 전문가입니다. 다음 JSON 형식으로 응답해 주세요:\n" +
+                    "설명하는 이미지를 생성하는 전문가입니다. 반드시 아래 JSON 배열 형식으로만 응답해 주세요:\n" +
                     "[{\"imageUrl\": \"생성할 이미지의 설명\", \"imageType\": \"CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION\", " +
                     "\"conceptReference\": \"관련 개념\", \"altText\": \"이미지 대체 텍스트\", \"position\": {\"page\": 페이지번호}}]");
             messages.add(systemMessage);
-            
+
             StringBuilder promptBuilder = new StringBuilder();
             promptBuilder.append("다음 교육 자료와 어려운 용어 목록을 분석하여, 필요한 이미지를 생성해 주세요:\n\n");
             promptBuilder.append("교육 자료:\n").append(content).append("\n\n");
-            
+
             promptBuilder.append("어려운 용어 목록:\n");
             for (TermInfo term : terms) {
                 if (term.isVisualAidNeeded()) {
                     promptBuilder.append("- ").append(term.getTerm()).append(": ").append(term.getExplanation()).append("\n");
                 }
             }
-            
+
             Map<String, String> userMessage = new HashMap<>();
             userMessage.put("role", "user");
             userMessage.put("content", promptBuilder.toString());
             messages.add(userMessage);
-            
+
             requestBody.put("messages", messages);
             requestBody.put("temperature", 0.5);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + aiApiKey);
-            
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-            
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
             Map<String, Object> choice = choices.get(0);
             Map<String, String> message = (Map<String, String>) choice.get("message");
             String content2 = message.get("content");
-            
+
+            log.info("AI 이미지 원본 응답: {}", content2);
+
             if (content2.contains("```json")) {
                 content2 = content2.substring(content2.indexOf("```json") + 7);
                 content2 = content2.substring(0, content2.indexOf("```"));
@@ -359,36 +403,165 @@ public class AIPromptService {
                 content2 = content2.substring(content2.indexOf("```") + 3);
                 content2 = content2.substring(0, content2.indexOf("```"));
             }
-            
             content2 = content2.trim();
-            
-            @SuppressWarnings("unchecked")
-            List<Map<String, Object>> imagesData = objectMapper.readValue(content2, List.class);
-            
-            List<ImageInfo> images = new ArrayList<>();
-            
-            for (Map<String, Object> imageData : imagesData) {
-                String imageUrl = (String) imageData.get("imageUrl");
-                String imageTypeStr = (String) imageData.get("imageType");
-                ImageType imageType = ImageType.valueOf(imageTypeStr);
-                String conceptReference = (String) imageData.get("conceptReference");
-                String altText = (String) imageData.get("altText");
-                
-                @SuppressWarnings("unchecked")
-                Map<String, Object> position = (Map<String, Object>) imageData.get("position");
-                
-                com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
-                
-                // TODO: 실제 이미지 생성 로직은 여기서 구현해야 함 - 은기
-                images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
+
+            // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
+            Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
+            Matcher m = p.matcher(content2);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                m.appendReplacement(sb, m.group(1) + ".0");
             }
-            
-            log.info("이미지 생성 완료: {} 개 이미지", images.size());
-            return images;
-            
+            m.appendTail(sb);
+            content2 = sb.toString();
+
+            try {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> imagesData = objectMapper.readValue(content2, List.class);
+                List<ImageInfo> images = new ArrayList<>();
+                for (Map<String, Object> imageData : imagesData) {
+                    String imageUrl = (String) imageData.get("imageUrl");
+                    String imageTypeStr = (String) imageData.get("imageType");
+                    ImageType imageType = ImageType.valueOf(imageTypeStr);
+                    String conceptReference = (String) imageData.get("conceptReference");
+                    String altText = (String) imageData.get("altText");
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> position = (Map<String, Object>) imageData.get("position");
+                    com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
+                    images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
+                }
+                log.info("이미지 생성 완료: {} 개 이미지", images.size());
+                return images;
+            } catch (Exception e) {
+                log.error("이미지 JSON 파싱 실패. 원본: {}", content2, e);
+                throw new RuntimeException("AI 이미지 응답 JSON 파싱 실패: " + e.getMessage(), e);
+            }
         } catch (Exception e) {
             log.error("이미지 생성 중 오류 발생", e);
             return new ArrayList<>();
+        }
+    }
+    
+    public List<Block> processPageContentToBlocks(String rawContent, Grade grade) {
+        log.info("페이지 콘텐츠 Block 구조로 처리 시작, 난이도: {}", grade);
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", "gpt-4");
+
+            List<Map<String, String>> messages = new ArrayList<>();
+
+            Map<String, String> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content",
+                "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
+                "텍스트를 분석하고 반드시 아래 Block 구조(JSON 배열)로만 응답해 주세요. 각 요소는 type, id 등 Block 구조를 따릅니다.\n" +
+                "아래는 예시입니다. 반드시 이 구조와 동일하게 응답하세요.\n" +
+                "\n" +
+                "[\n" +
+                "  {\n" +
+                "    \"id\": \"1\",\n" +
+                "    \"type\": \"HEADING1\",\n" +
+                "    \"text\": \"챕터 제목\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"id\": \"2\",\n" +
+                "    \"type\": \"TEXT\",\n" +
+                "    \"text\": \"본문 내용입니다. 여러 문단이 올 수 있습니다.\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"id\": \"3\",\n" +
+                "    \"type\": \"LIST\",\n" +
+                "    \"items\": [\"항목1\", \"항목2\", \"항목3\"]\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"id\": \"4\",\n" +
+                "    \"type\": \"IMAGE\",\n" +
+                "    \"url\": \"https://example.com/image1.png\",\n" +
+                "    \"alt\": \"이미지 설명\",\n" +
+                "    \"width\": 400,\n" +
+                "    \"height\": 300\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"id\": \"5\",\n" +
+                "    \"type\": \"TABLE\",\n" +
+                "    \"headers\": [\"A\", \"B\"],\n" +
+                "    \"rows\": [[\"1\", \"2\"], [\"3\", \"4\"]]\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"id\": \"6\",\n" +
+                "    \"type\": \"PAGE_TIP\",\n" +
+                "    \"tipId\": \"tip-uuid-123\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"id\": \"7\",\n" +
+                "    \"type\": \"PAGE_IMAGE\",\n" +
+                "    \"imageId\": \"img-uuid-456\"\n" +
+                "  }\n" +
+                "]\n"
+            );
+            messages.add(systemMessage);
+
+            Map<String, String> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent);
+            messages.add(userMessage);
+
+            requestBody.put("messages", messages);
+            requestBody.put("temperature", 0.3);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + aiApiKey);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+            Map<String, Object> choice = choices.get(0);
+            Map<String, String> message = (Map<String, String>) choice.get("message");
+            String content = message.get("content");
+
+            log.info("AI 원본 응답: {}", content);
+
+            if (content.contains("```json")) {
+                content = content.substring(content.indexOf("```json") + 7);
+                content = content.substring(0, content.indexOf("```"));
+            } else if (content.contains("```")) {
+                content = content.substring(content.indexOf("```") + 3);
+                content = content.substring(0, content.indexOf("```"));
+            }
+            content = content.trim();
+
+            // Block 구조(JSON 배열)인지 간단히 체크
+            if (!(content.startsWith("[") && content.endsWith("]"))) {
+                log.info("AI 응답이 Block 구조(JSON 배열)가 아님. content: {}", content);
+                return new ArrayList<>();
+            }
+
+            // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
+            Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
+            Matcher m = p.matcher(content);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                m.appendReplacement(sb, m.group(1) + ".0");
+            }
+            m.appendTail(sb);
+            content = sb.toString();
+
+            try {
+                List<BlockImpl> blockImpls = objectMapper.readValue(content, new TypeReference<List<BlockImpl>>() {});
+                List<Block> blocks = new ArrayList<>(blockImpls);
+                log.info("Block 구조 변환 완료: {}개 블록", blocks.size());
+                return blocks;
+            } catch (Exception e) {
+                log.error("Block 구조 JSON 파싱 실패. 원본: {}", content, e);
+                throw new RuntimeException("AI 응답 JSON 파싱 실패: " + e.getMessage(), e);
+            }
+        } catch (Exception e) {
+            log.error("Block 구조 변환 중 오류 발생", e);
+            throw new RuntimeException("AI를 통한 Block 구조 변환 중 오류가 발생했습니다.", e);
         }
     }
     

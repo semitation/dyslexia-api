@@ -9,6 +9,11 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import com.dyslexia.dyslexia.domain.pdf.Block;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+import java.util.List;
+import java.util.Collections;
 
 import java.time.LocalDateTime;
 
@@ -56,7 +61,21 @@ public class PageContentResponse {
     @Schema(description = "수정 시간")
     private LocalDateTime updatedAt;
 
-    public static PageContentResponse fromEntity(Page page) {
+    @Schema(description = "Block 구조화 데이터. type: HEADING1, TEXT, LIST, IMAGE, TABLE, PAGE_TIP, PAGE_IMAGE 등. 예시: [ {\"id\":\"1\",\"type\":\"HEADING1\",\"text\":\"챕터 제목\"}, {\"id\":\"2\",\"type\":\"TEXT\",\"text\":\"본문\"}, {\"id\":\"3\",\"type\":\"LIST\",\"items\":[\"항목1\",\"항목2\"]} ]",
+           example = "[{\"id\":\"1\",\"type\":\"HEADING1\",\"text\":\"챕터 제목\"},{\"id\":\"2\",\"type\":\"TEXT\",\"text\":\"본문\"},{\"id\":\"3\",\"type\":\"LIST\",\"items\":[\"항목1\",\"항목2\"]}]")
+    private List<Block> blocks;
+
+    public static PageContentResponse fromEntity(Page page, ObjectMapper objectMapper) {
+        List<Block> blocks = null;
+        try {
+            if (page.getProcessedContent() != null && !page.getProcessedContent().isNull()) {
+                blocks = objectMapper.readValue(page.getProcessedContent().toString(), new TypeReference<List<Block>>() {});
+            } else {
+                blocks = Collections.emptyList();
+            }
+        } catch (Exception e) {
+            blocks = Collections.emptyList();
+        }
         return PageContentResponse.builder()
                 .id(page.getId())
                 .documentId(page.getDocument().getId())
@@ -70,6 +89,7 @@ public class PageContentResponse {
                 .complexityScore(page.getComplexityScore())
                 .createdAt(page.getCreatedAt())
                 .updatedAt(page.getUpdatedAt())
+                .blocks(blocks)
                 .build();
     }
 } 
