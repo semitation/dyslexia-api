@@ -47,6 +47,7 @@ public class AIPromptService {
 
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
+
             systemMessage.put("content",
                 "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
                 "아래 BlockType과 필드 규칙, 예시에 따라 반드시 JSON 배열만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +

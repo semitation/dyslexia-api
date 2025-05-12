@@ -42,6 +42,7 @@ public class DocumentProcessService {
     private final StorageService storageService;
     private final Executor taskExecutor;
     private final ObjectMapper objectMapper;
+    private final DeepLTranslatorService deepLTranslatorService;
 
     @Transactional
     public Document uploadDocument(Long teacherId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
@@ -128,7 +129,11 @@ public class DocumentProcessService {
                 return;
             }
 
-            String processedContentStr = aiPromptService.processPageContent(rawContent, document.getGrade());
+            // 1. DeepL 번역 수행
+            String translatedContent = deepLTranslatorService.translateText(rawContent);
+
+            // 2. 번역된 텍스트로 AI Block 처리
+            String processedContentStr = aiPromptService.processPageContent(translatedContent, document.getGrade());
             com.fasterxml.jackson.databind.JsonNode processedContent;
             try {
                 processedContent = objectMapper.readTree(processedContentStr);
@@ -137,10 +142,11 @@ public class DocumentProcessService {
                 throw new RuntimeException("처리된 콘텐츠를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
             }
 
-            String sectionTitle = aiPromptService.extractSectionTitle(rawContent);
-            Integer readingLevel = aiPromptService.calculateReadingLevel(rawContent);
-            Integer wordCount = aiPromptService.countWords(rawContent);
-            Float complexityScore = aiPromptService.calculateComplexityScore(rawContent);
+            // 3. 메타데이터 추출 (번역된 텍스트 기반)
+            String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
+            Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
+            Integer wordCount = aiPromptService.countWords(translatedContent);
+            Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
 
             Page page;
             if (existingPage.isPresent()) {
@@ -169,7 +175,7 @@ public class DocumentProcessService {
             }
 
             log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-            List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(rawContent, document.getGrade());
+            List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(translatedContent, document.getGrade());
             for (AIPromptService.TermInfo termInfo : terms) {
                 PageTip pageTip = PageTip.builder()
                     .page(page)
@@ -186,7 +192,7 @@ public class DocumentProcessService {
             log.info("용어 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", terms.size(), document.getId(), pageNumber);
 
             log.info("이미지 생성 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-            List<AIPromptService.ImageInfo> images = aiPromptService.extractOrGenerateImages(rawContent, terms);
+            List<AIPromptService.ImageInfo> images = aiPromptService.extractOrGenerateImages(translatedContent, terms);
             for (AIPromptService.ImageInfo imageInfo : images) {
                 PageImage pageImage = PageImage.builder()
                     .page(page)
