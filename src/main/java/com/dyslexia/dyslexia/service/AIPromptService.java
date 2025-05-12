@@ -453,51 +453,30 @@ public class AIPromptService {
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
             systemMessage.put("content",
-                "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
-                "텍스트를 분석하고 반드시 아래 Block 구조(JSON 배열)로만 응답해 주세요. 각 요소는 type, id 등 Block 구조를 따릅니다.\n" +
-                "아래는 예시입니다. 반드시 이 구조와 동일하게 응답하세요.\n" +
+                "아래 BlockType과 필드 규칙, 예시에 따라 반드시 JSON 배열만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +
                 "\n" +
+                "BlockType: TEXT, HEADING1, HEADING2, HEADING3, LIST, DOTTED, IMAGE, TABLE, PAGE_TIP, PAGE_IMAGE\n" +
+                "공통 필드: id(string), type(string)\n" +
+                "각 type별 필드:\n" +
+                "- TEXT: text(string)\n" +
+                "- HEADING1~3: text(string)\n" +
+                "- LIST/DOTTED: items(string[])\n" +
+                "- IMAGE: url(string), alt(string), width(number, optional), height(number, optional)\n" +
+                "- TABLE: headers(string[]), rows(string[][])\n" +
+                "- PAGE_TIP: tipId(string)\n" +
+                "- PAGE_IMAGE: imageId(string)\n" +
+                "\n" +
+                "예시:\n" +
                 "[\n" +
-                "  {\n" +
-                "    \"id\": \"1\",\n" +
-                "    \"type\": \"HEADING1\",\n" +
-                "    \"text\": \"챕터 제목\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": \"2\",\n" +
-                "    \"type\": \"TEXT\",\n" +
-                "    \"text\": \"본문 내용입니다. 여러 문단이 올 수 있습니다.\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": \"3\",\n" +
-                "    \"type\": \"LIST\",\n" +
-                "    \"items\": [\"항목1\", \"항목2\", \"항목3\"]\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": \"4\",\n" +
-                "    \"type\": \"IMAGE\",\n" +
-                "    \"url\": \"https://example.com/image1.png\",\n" +
-                "    \"alt\": \"이미지 설명\",\n" +
-                "    \"width\": 400,\n" +
-                "    \"height\": 300\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": \"5\",\n" +
-                "    \"type\": \"TABLE\",\n" +
-                "    \"headers\": [\"A\", \"B\"],\n" +
-                "    \"rows\": [[\"1\", \"2\"], [\"3\", \"4\"]]\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": \"6\",\n" +
-                "    \"type\": \"PAGE_TIP\",\n" +
-                "    \"tipId\": \"tip-uuid-123\"\n" +
-                "  },\n" +
-                "  {\n" +
-                "    \"id\": \"7\",\n" +
-                "    \"type\": \"PAGE_IMAGE\",\n" +
-                "    \"imageId\": \"img-uuid-456\"\n" +
-                "  }\n" +
-                "]\n"
+                "  {\"id\": \"1\", \"type\": \"HEADING1\", \"text\": \"챕터 제목\"},\n" +
+                "  {\"id\": \"2\", \"type\": \"TEXT\", \"text\": \"본문 내용입니다. 여러 문단이 올 수 있습니다.\"},\n" +
+                "  {\"id\": \"3\", \"type\": \"LIST\", \"items\": [\"항목1\", \"항목2\", \"항목3\"]},\n" +
+                "  {\"id\": \"4\", \"type\": \"IMAGE\", \"url\": \"https://example.com/image1.png\", \"alt\": \"이미지 설명\", \"width\": 400, \"height\": 300},\n" +
+                "  {\"id\": \"5\", \"type\": \"TABLE\", \"headers\": [\"A\", \"B\"], \"rows\": [[\"1\", \"2\"], [\"3\", \"4\"]]},\n" +
+                "  {\"id\": \"6\", \"type\": \"PAGE_TIP\", \"tipId\": \"tip-uuid-123\"},\n" +
+                "  {\"id\": \"7\", \"type\": \"PAGE_IMAGE\", \"imageId\": \"img-uuid-456\"}\n" +
+                "]\n" +
+                "type 값은 반드시 대문자(예: TEXT, HEADING1)로 작성하세요."
             );
             messages.add(systemMessage);
 
@@ -534,13 +513,11 @@ public class AIPromptService {
             }
             content = content.trim();
 
-            // Block 구조(JSON 배열)인지 간단히 체크
             if (!(content.startsWith("[") && content.endsWith("]"))) {
                 log.info("AI 응답이 Block 구조(JSON 배열)가 아님. content: {}", content);
                 return new ArrayList<>();
             }
 
-            // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
             Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
             Matcher m = p.matcher(content);
             StringBuffer sb = new StringBuffer();
