@@ -42,7 +42,7 @@ public class Page {
     @Column(name = "processing_status", nullable = false)
     private DocumentProcessStatus processingStatus = DocumentProcessStatus.PENDING;
 
-    @Column(name = "section_title")
+    @Column(name = "section_title", columnDefinition = "TEXT")
     private String sectionTitle;
 
     @Column(name = "reading_level")
