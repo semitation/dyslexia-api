@@ -51,7 +51,12 @@ public class DocumentProcessService {
         String originalFilename = file.getOriginalFilename();
         String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-        String filePath = storageService.store(file, uniqueFilename);
+        
+        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 고유 파일명: {}, 교사ID: {}", 
+                originalFilename, uniqueFilename, teacherId);
+                
+        String filePath = storageService.store(file, uniqueFilename, teacherId);
+        log.info("파일 저장 경로: {}", filePath);
 
         Document document = Document.builder()
             .teacher(teacher)
