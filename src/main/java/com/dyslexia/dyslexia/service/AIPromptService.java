@@ -49,52 +49,36 @@ public class AIPromptService {
             systemMessage.put("role", "system");
             systemMessage.put("content",
                 "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
-                "아래 JSON 스키마에 맞춰 텍스트를 분석하고 반드시 JSON만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +
+                "아래 BlockType과 필드 규칙, 예시에 따라 반드시 JSON 배열만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +
                 "\n" +
-                "스키마:\n" +
-                "{\n" +
-                "  \"sections\": [\n" +
-                "    {\"type\": \"heading\", \"content\": \"제목\", \"level\": 1},\n" +
-                "    {\"type\": \"paragraph\", \"content\": \"문단 내용\", \"tags\": [\"핵심 개념\"]},\n" +
-                "    {\"type\": \"difficult_term\", \"term\": \"용어\", \"tip_id\": 123, \"position\": {\"start\": 0, \"end\": 3}},\n" +
-                "    {\"type\": \"image_reference\", \"image_id\": 456, \"concept\": \"개념\"}\n" +
-                "  ],\n" +
-                "  \"layout\": {\n" +
-                "    \"font_size\": 18,\n" +
-                "    \"line_spacing\": 1.5,\n" +
-                "    \"letter_spacing\": 0.1,\n" +
-                "    \"recommended_font\": \"OpenDyslexic\"\n" +
-                "  }\n" +
-                "}\n" +
+                "BlockType: TEXT, HEADING1, HEADING2, HEADING3, LIST, DOTTED, IMAGE, TABLE, PAGE_TIP, PAGE_IMAGE\n" +
+                "공통 필드: id(string), type(string)\n" +
+                "각 type별 필드:\n" +
+                "- TEXT: text(string)\n" +
+                "- HEADING1~3: text(string)\n" +
+                "- LIST/DOTTED: items(string[])\n" +
+                "- IMAGE: url(string), alt(string), width(number, optional), height(number, optional)\n" +
+                "- TABLE: headers(string[]), rows(string[][])\n" +
+                "- PAGE_TIP: tipId(string)\n" +
+                "- PAGE_IMAGE: imageId(string)\n" +
                 "\n" +
-                "sections 배열에는 다음 타입의 블록이 들어갈 수 있습니다:\n" +
-                "- heading: {type, content, level} (level=1~3)\n" +
-                "- paragraph: {type, content, tags} (tags는 선택)\n" +
-                "- difficult_term: {type, term, tip_id, position} (position={start,end})\n" +
-                "- image_reference: {type, image_id, concept}\n" +
-                "layout은 추천 레이아웃 정보를 담습니다.\n" +
-                "JSON 외의 텍스트, 마크다운, 코드블록을 포함하지 마세요. 반드시 위 구조와 동일하게 응답하세요.\n" +
                 "예시:\n" +
-                "{\n" +
-                "  \"sections\": [\n" +
-                "    {\"type\": \"heading\", \"content\": \"생태계와 환경\", \"level\": 1},\n" +
-                "    {\"type\": \"paragraph\", \"content\": \"생태계는 생물과 환경으로 이루어져 있습니다.\", \"tags\": [\"핵심 개념\"]},\n" +
-                "    {\"type\": \"difficult_term\", \"term\": \"생태계\", \"tip_id\": 123, \"position\": {\"start\": 0, \"end\": 3}},\n" +
-                "    {\"type\": \"image_reference\", \"image_id\": 456, \"concept\": \"생태계 구성\"}\n" +
-                "  ],\n" +
-                "  \"layout\": {\n" +
-                "    \"font_size\": 18,\n" +
-                "    \"line_spacing\": 1.5,\n" +
-                "    \"letter_spacing\": 0.1,\n" +
-                "    \"recommended_font\": \"OpenDyslexic\"\n" +
-                "  }\n" +
-                "}\n"
+                "[\n" +
+                "  {\"id\": \"1\", \"type\": \"HEADING1\", \"text\": \"챕터 제목\"},\n" +
+                "  {\"id\": \"2\", \"type\": \"TEXT\", \"text\": \"본문 내용입니다. 여러 문단이 올 수 있습니다.\"},\n" +
+                "  {\"id\": \"3\", \"type\": \"LIST\", \"items\": [\"항목1\", \"항목2\", \"항목3\"]},\n" +
+                "  {\"id\": \"4\", \"type\": \"IMAGE\", \"url\": \"https://example.com/image1.png\", \"alt\": \"이미지 설명\", \"width\": 400, \"height\": 300},\n" +
+                "  {\"id\": \"5\", \"type\": \"TABLE\", \"headers\": [\"A\", \"B\"], \"rows\": [[\"1\", \"2\"], [\"3\", \"4\"]]},\n" +
+                "  {\"id\": \"6\", \"type\": \"PAGE_TIP\", \"tipId\": \"tip-uuid-123\"},\n" +
+                "  {\"id\": \"7\", \"type\": \"PAGE_IMAGE\", \"imageId\": \"img-uuid-456\"}\n" +
+                "]\n" +
+                "type 값은 반드시 대문자(예: TEXT, HEADING1)로 작성하세요."
             );
             messages.add(systemMessage);
 
             Map<String, String> userMessage = new HashMap<>();
             userMessage.put("role", "user");
-            userMessage.put("content", "다음 교육 자료를 난독증 학생들을 위한 구조화된 JSON으로 변환해 주세요: \n\n" + rawContent);
+            userMessage.put("content", "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent);
             messages.add(userMessage);
 
             requestBody.put("messages", messages);
@@ -124,7 +108,7 @@ public class AIPromptService {
             }
 
             content = content.trim();
-            objectMapper.readValue(content, Map.class);
+            objectMapper.readValue(content, List.class);
             log.info("페이지 콘텐츠 처리 완료");
             return content;
         } catch (Exception e) {
