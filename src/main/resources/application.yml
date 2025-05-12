@@ -54,4 +54,8 @@ ai:
   api:
     url: https://api.openai.com/v1/chat/completions
     key: ${OPENAI_API_KEY}
-deepl:  api:    url: https://api-free.deepl.com    key: ${DEEPL_SECRET}
+
+deepl:
+  api:
+    url: https://api-free.deepl.com
+    key: ${DEEPL_SECRET}
