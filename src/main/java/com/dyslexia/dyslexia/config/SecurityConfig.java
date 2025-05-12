@@ -59,7 +59,8 @@ public class SecurityConfig {
             "https://dyslexia-semi.netlify.app",
             "http://dyslexia-semi.netlify.app",
             "https://jeju-mem.com",
-            "http://jeju-mem.com"
+            "http://jeju-mem.com",
+            "http://localhost:5173"
         ));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
