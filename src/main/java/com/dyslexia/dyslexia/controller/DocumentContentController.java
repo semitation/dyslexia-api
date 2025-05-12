@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,11 +29,12 @@ import java.util.stream.Collectors;
 public class DocumentContentController {
 
     private final DocumentContentService documentContentService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/pages")
     @Operation(
         summary = "문서 페이지 조회", 
-        description = "문서 ID 기반으로 생성된 콘텐츠 JSON(page)를 조회합니다. 페이지 번호를 지정하면 특정 페이지만 조회합니다.",
+        description = "문서 ID 기반으로 생성된 콘텐츠 JSON(page)를 조회합니다. 페이지 번호를 지정하면 특정 페이지만 조회합니다.\n\nBlock 구조 예시:\n[\n  {\"id\":\"1\",\"type\":\"HEADING1\",\"text\":\"챕터 제목\"},\n  {\"id\":\"2\",\"type\":\"TEXT\",\"text\":\"본문\"},\n  {\"id\":\"3\",\"type\":\"LIST\",\"items\":[\"항목1\",\"항목2\"]}\n]",
         responses = {
             @ApiResponse(
                 responseCode = "200",
@@ -51,7 +53,7 @@ public class DocumentContentController {
             @Parameter(description = "페이지 번호 (선택사항)") @RequestParam(name = "page", required = false) Integer pageNumber) {
         List<Page> pages = documentContentService.getPagesByDocumentId(documentId, pageNumber);
         List<PageContentResponse> responses = pages.stream()
-                .map(PageContentResponse::fromEntity)
+                .map(page -> PageContentResponse.fromEntity(page, objectMapper))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
