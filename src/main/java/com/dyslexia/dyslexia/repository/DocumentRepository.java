@@ -21,4 +21,6 @@ public interface DocumentRepository extends JpaRepository<Document, Long> {
     Optional<Document> findByIdAndTeacherId(Long id, Long teacherId);
     
     List<Document> findByTeacherIdOrderByCreatedAtDesc(Long teacherId);
+    
+    List<Document> findAllByOrderByCreatedAtDesc();
 } 
