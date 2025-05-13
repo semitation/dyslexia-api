@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import com.dyslexia.dyslexia.domain.pdf.Block;
 import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.dyslexia.dyslexia.util.PromptBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,44 +38,22 @@ public class AIPromptService {
     @Value("${ai.api.key}")
     private String aiApiKey;
 
+    private static final String MODEL = "gpt-4.1";
+
     public String processPageContent(String rawContent, Grade grade) {
         log.info("페이지 콘텐츠 처리 시작, 난이도: {}", grade);
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-
-            systemMessage.put("content",
-                "당신은 난독증이 있는 " + grade.name() + " 학생들을 위한 교육 자료를 변환하는 전문가입니다. " +
-                "아래 BlockType과 필드 규칙, 예시에 따라 반드시 JSON 배열만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +
-                "\n" +
-                "BlockType: TEXT, HEADING1, HEADING2, HEADING3, LIST, DOTTED, IMAGE, TABLE, PAGE_TIP, PAGE_IMAGE\n" +
-                "공통 필드: id(string), type(string)\n" +
-                "각 type별 필드:\n" +
-                "- TEXT: text(string)\n" +
-                "- HEADING1~3: text(string)\n" +
-                "- LIST/DOTTED: items(string[])\n" +
-                "- IMAGE: url(string), alt(string), width(number, optional), height(number, optional)\n" +
-                "- TABLE: headers(string[]), rows(string[][])\n" +
-                "- PAGE_TIP: tipId(string)\n" +
-                "- PAGE_IMAGE: imageId(string)\n" +
-                "\n" +
-                "예시:\n" +
-                "[\n" +
-                "  {\"id\": \"1\", \"type\": \"HEADING1\", \"text\": \"챕터 제목\"},\n" +
-                "  {\"id\": \"2\", \"type\": \"TEXT\", \"text\": \"본문 내용입니다. 여러 문단이 올 수 있습니다.\"},\n" +
-                "  {\"id\": \"3\", \"type\": \"LIST\", \"items\": [\"항목1\", \"항목2\", \"항목3\"]},\n" +
-                "  {\"id\": \"4\", \"type\": \"IMAGE\", \"url\": \"https://example.com/image1.png\", \"alt\": \"이미지 설명\", \"width\": 400, \"height\": 300},\n" +
-                "  {\"id\": \"5\", \"type\": \"TABLE\", \"headers\": [\"A\", \"B\"], \"rows\": [[\"1\", \"2\"], [\"3\", \"4\"]]},\n" +
-                "  {\"id\": \"6\", \"type\": \"PAGE_TIP\", \"tipId\": \"tip-uuid-123\"},\n" +
-                "  {\"id\": \"7\", \"type\": \"PAGE_IMAGE\", \"imageId\": \"img-uuid-456\"}\n" +
-                "]\n" +
-                "type 값은 반드시 대문자(예: TEXT, HEADING1)로 작성하세요."
-            );
+            String systemPrompt = new PromptBuilder()
+                .add(PromptBuilder.BLOCK_SYSTEM_PROMPT, Map.of("grade", grade.name()))
+                .build();
+            systemMessage.put("content", systemPrompt);
             messages.add(systemMessage);
 
             Map<String, String> userMessage = new HashMap<>();
@@ -90,7 +69,6 @@ public class AIPromptService {
             headers.set("Authorization", "Bearer " + aiApiKey);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
             log.info("AI 블록생성 응답: {}", response);
 
@@ -123,18 +101,18 @@ public class AIPromptService {
         
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
             
             List<Map<String, String>> messages = new ArrayList<>();
             
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", "당신은 교육 자료에서 섹션 제목을 추출하는 전문가입니다.");
+            systemMessage.put("content", PromptBuilder.SECTION_TITLE_SYSTEM_PROMPT);
             messages.add(systemMessage);
             
             Map<String, String> userMessage = new HashMap<>();
             userMessage.put("role", "user");
-            userMessage.put("content", "다음 텍스트에서 섹션 제목을 추출해 주세요. 명확한 제목이 없으면 내용을 가장 잘 대표하는 제목을 생성해 주세요: \n\n" + 
+            userMessage.put("content", "다음 텍스트에서 섹션 제목을 추출해 주세요. 명확한 제목이 없으면 내용을 가장 잘 대표하는 제목을 생성해 주세요 여러개의 제목이 포함되는 경우 포괄적으로 이해할 수 있는 한 문장으로 바꿔주세요.: \n\n" +
                     (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent));
             messages.add(userMessage);
             
@@ -173,13 +151,13 @@ public class AIPromptService {
         
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
             
             List<Map<String, String>> messages = new ArrayList<>();
             
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", "당신은 텍스트의 읽기 난이도를 계산하는 전문가입니다. 1부터 10까지의 숫자로만 응답해 주세요.");
+            systemMessage.put("content", PromptBuilder.READING_LEVEL_SYSTEM_PROMPT);
             messages.add(systemMessage);
             
             Map<String, String> userMessage = new HashMap<>();
@@ -198,7 +176,7 @@ public class AIPromptService {
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
             
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-            
+                
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
             Map<String, Object> choice = choices.get(0);
@@ -243,46 +221,42 @@ public class AIPromptService {
      // 키워드/어려운 용어를 추출하고 설명을 생성
     public List<TermInfo> extractTerms(String content, Grade grade) {
         log.info("키워드 추출 시작");
-        
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
-            
+            requestBody.put("model", MODEL);
+
             List<Map<String, String>> messages = new ArrayList<>();
-            
+
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", "당신은 교육 자료에서 난독증이 있는 " + grade.name() + " 학생들이 이해하기 어려울 수 있는 용어를 찾고 " +
-                    "쉽게 설명하는 전문가입니다. 전문 용어, 복잡한 개념, 추상적인 아이디어 등을 찾아 간단히 설명해 주세요. " +
-                    "각 용어는 다음 JSON 형식으로 응답해 주세요:\n" +
-                    "[{\"term\": \"용어\", \"explanation\": \"쉬운 설명\", \"position\": {\"start\": 시작위치, \"end\": 끝위치}, " +
-                    "\"type\": \"DIFFICULT_WORD | COMPLEX_CONCEPT | ABSTRACT_IDEA | TECHNICAL_TERM\", " +
-                    "\"visualAidNeeded\": true|false, \"readAloudText\": \"소리내어 읽기 텍스트\"}]");
+            String systemPrompt = new PromptBuilder()
+                .add(PromptBuilder.TERM_EXTRACT_SYSTEM_PROMPT, Map.of("grade", grade.name()))
+                .build();
+            systemMessage.put("content", systemPrompt);
             messages.add(systemMessage);
-            
+
             Map<String, String> userMessage = new HashMap<>();
             userMessage.put("role", "user");
             userMessage.put("content", "다음 교육 자료에서 어려운 용어를 찾고 설명해 주세요: \n\n" + content);
             messages.add(userMessage);
-            
+
             requestBody.put("messages", messages);
             requestBody.put("temperature", 0.3);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + aiApiKey);
-            
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-            
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
             Map<String, Object> choice = choices.get(0);
             Map<String, String> message = (Map<String, String>) choice.get("message");
             String content2 = message.get("content");
-            
-            // content에서 JSON 부분만 추출
+
             if (content2.contains("```json")) {
                 content2 = content2.substring(content2.indexOf("```json") + 7);
                 content2 = content2.substring(0, content2.indexOf("```"));
@@ -290,40 +264,39 @@ public class AIPromptService {
                 content2 = content2.substring(content2.indexOf("```") + 3);
                 content2 = content2.substring(0, content2.indexOf("```"));
             }
-            
+
             content2 = content2.trim();
-            
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> termsData = objectMapper.readValue(content2, List.class);
-            
+
             List<TermInfo> terms = new ArrayList<>();
-            
+
             for (Map<String, Object> termData : termsData) {
                 String term = (String) termData.get("term");
                 String explanation = (String) termData.get("explanation");
-                
+
                 @SuppressWarnings("unchecked")
                 Map<String, Integer> position = (Map<String, Integer>) termData.get("position");
                 int start = position.get("start");
                 int end = position.get("end");
-                
+
                 String typeStr = (String) termData.get("type");
                 TermType type = TermType.valueOf(typeStr);
-                
+
                 Boolean visualAidNeeded = (Boolean) termData.get("visualAidNeeded");
                 String readAloudText = (String) termData.get("readAloudText");
-                
+
                 Map<String, Integer> positionMap = new HashMap<>();
                 positionMap.put("start", start);
                 positionMap.put("end", end);
                 com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(positionMap);
-                
+
                 terms.add(new TermInfo(term, explanation, positionJson, type, visualAidNeeded, readAloudText));
             }
-            
+
             log.info("키워드 추출 완료: {} 개 용어", terms.size());
             return terms;
-            
         } catch (Exception e) {
             log.error("키워드 추출 중 오류 발생", e);
             return new ArrayList<>();
@@ -334,16 +307,13 @@ public class AIPromptService {
         log.info("이미지 생성 시작");
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", "당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, " +
-                    "설명하는 이미지를 생성하는 전문가입니다. 반드시 아래 JSON 배열 형식으로만 응답해 주세요:\n" +
-                    "[{\"imageUrl\": \"생성할 이미지의 설명\", \"imageType\": \"CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION\", " +
-                    "\"conceptReference\": \"관련 개념\", \"altText\": \"이미지 대체 텍스트\", \"position\": {\"page\": 페이지번호}}]");
+            systemMessage.put("content", PromptBuilder.IMAGE_EXTRACT_SYSTEM_PROMPT);
             messages.add(systemMessage);
 
             StringBuilder promptBuilder = new StringBuilder();
@@ -390,7 +360,6 @@ public class AIPromptService {
             }
             content2 = content2.trim();
 
-            // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
             Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
             Matcher m = p.matcher(content2);
             StringBuffer sb = new StringBuffer();
@@ -431,38 +400,16 @@ public class AIPromptService {
         log.info("페이지 콘텐츠 Block 구조로 처리 시작, 난이도: {}", grade);
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content",
-                "아래 BlockType과 필드 규칙, 예시에 따라 반드시 JSON 배열만 반환하세요. 설명, 마크다운, 코드블록 없이 JSON만 반환하세요.\n" +
-                "\n" +
-                "BlockType: TEXT, HEADING1, HEADING2, HEADING3, LIST, DOTTED, IMAGE, TABLE, PAGE_TIP, PAGE_IMAGE\n" +
-                "공통 필드: id(string), type(string)\n" +
-                "각 type별 필드:\n" +
-                "- TEXT: text(string)\n" +
-                "- HEADING1~3: text(string)\n" +
-                "- LIST/DOTTED: items(string[])\n" +
-                "- IMAGE: url(string), alt(string), width(number, optional), height(number, optional)\n" +
-                "- TABLE: headers(string[]), rows(string[][])\n" +
-                "- PAGE_TIP: tipId(string)\n" +
-                "- PAGE_IMAGE: imageId(string)\n" +
-                "\n" +
-                "예시:\n" +
-                "[\n" +
-                "  {\"id\": \"1\", \"type\": \"HEADING1\", \"text\": \"챕터 제목\"},\n" +
-                "  {\"id\": \"2\", \"type\": \"TEXT\", \"text\": \"본문 내용입니다. 여러 문단이 올 수 있습니다.\"},\n" +
-                "  {\"id\": \"3\", \"type\": \"LIST\", \"items\": [\"항목1\", \"항목2\", \"항목3\"]},\n" +
-                "  {\"id\": \"4\", \"type\": \"IMAGE\", \"url\": \"https://example.com/image1.png\", \"alt\": \"이미지 설명\", \"width\": 400, \"height\": 300},\n" +
-                "  {\"id\": \"5\", \"type\": \"TABLE\", \"headers\": [\"A\", \"B\"], \"rows\": [[\"1\", \"2\"], [\"3\", \"4\"]]},\n" +
-                "  {\"id\": \"6\", \"type\": \"PAGE_TIP\", \"tipId\": \"tip-uuid-123\"},\n" +
-                "  {\"id\": \"7\", \"type\": \"PAGE_IMAGE\", \"imageId\": \"img-uuid-456\"}\n" +
-                "]\n" +
-                "type 값은 반드시 대문자(예: TEXT, HEADING1)로 작성하세요."
-            );
+            String systemPrompt = new PromptBuilder()
+                .add(PromptBuilder.BLOCK_SYSTEM_PROMPT, Map.of("grade", grade.name()))
+                .build();
+            systemMessage.put("content", systemPrompt);
             messages.add(systemMessage);
 
             Map<String, String> userMessage = new HashMap<>();
@@ -531,7 +478,7 @@ public class AIPromptService {
         log.info("OpenAI 번역 시작: 텍스트 길이: {}", text.length());
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
