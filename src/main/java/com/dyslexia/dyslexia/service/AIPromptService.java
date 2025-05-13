@@ -102,8 +102,18 @@ public class AIPromptService {
 
     try {
       String userPrompt =
-          "다음 텍스트에서 섹션 제목을 추출해 주세요. 명확한 제목이 없으면 내용을 가장 잘 대표하는 제목을 생성해 주세요 여러개의 제목이 포함되는 경우 포괄적으로 이해할 수 있는 한 문장으로 바꿔주세요.: \n\n"
+          """
+          다음 텍스트에서 섹션의 제목을 추출하거나 제목을 생성하려고 합니다.
+          제목을 생성하는 기준: 제목이 명시적으로 존재하지 않거나 여러 주제를 포함함
+          제목일 가능성이 높은 기준: 문서의 가장 앞에 위치하며, 다른 문장에 비해 짧고 간결함
+          생성 시 결과: 전체 내용을 요약한 핵심 주제 기반
+          최종 결과: 20자 이내의 간결하면서 핵심적이지만 난독증 환자도 읽기 쉬운 문맥상 자연스러운 제목
+          
+          
+          """
           +
+          // "다음 텍스트에서 섹션 제목을 추출하세요. 명확한 제목이 없으면 내용을 포괄적으로 이해할 수 있도록 단 하나의 제목을 생성하세요. 한 문장으로만 출력하세요.: \n\n"
+          // +
           (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent);
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
@@ -135,7 +145,7 @@ public class AIPromptService {
 
     try {
 
-      String userPrompt = "다음 텍스트의 읽기 난이도를 분석하여 1(매우 쉬움)부터 10(매우 어려움)까지의 숫자로만 응답해 주세요: \n\n" +
+      String userPrompt = "다음 텍스트의 읽기 난이도를 분석하여 1(매우 쉬움)부터 10(매우 어려움)까지의 숫자로만 응답하세요.: \n\n" +
                           (content.length() > 1000 ? content.substring(0, 1000) : content);
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
@@ -298,7 +308,7 @@ public class AIPromptService {
 
       Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
       Matcher m = p.matcher(content2);
-      StringBuffer sb = new StringBuffer();
+      StringBuilder sb = new StringBuilder();
       while (m.find()) {
         m.appendReplacement(sb, m.group(1) + ".0");
       }
@@ -371,7 +381,7 @@ public class AIPromptService {
 
       Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
       Matcher m = p.matcher(content);
-      StringBuffer sb = new StringBuffer();
+      StringBuilder sb = new StringBuilder();
       while (m.find()) {
         m.appendReplacement(sb, m.group(1) + ".0");
       }
@@ -380,7 +390,7 @@ public class AIPromptService {
 
       try {
         List<BlockImpl> blockImpls = objectMapper.readValue(content,
-            new TypeReference<List<BlockImpl>>() {
+            new TypeReference<>() {
             });
         List<Block> blocks = new ArrayList<>(blockImpls);
         log.info("Block 구조 변환 완료: {}개 블록", blocks.size());
