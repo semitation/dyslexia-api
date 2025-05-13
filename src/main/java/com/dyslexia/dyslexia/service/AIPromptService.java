@@ -41,8 +41,21 @@ public class AIPromptService {
   @Value("${ai.api.key}")
   private String aiApiKey;
 
-  private void HttpHeader(Map<String, Object> requestBody) {
+  private Map<String, Object> requestToApi(Map<String, Object> requestBody) {
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.set("Authorization", "Bearer " + aiApiKey);
 
+    HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+    return restTemplate.postForObject(aiApiUrl, request, Map.class);
+  }
+
+  @SuppressWarnings("unchecked")
+  private String extractMessageContent(Map<String, Object> response) {
+    List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+    Map<String, Object> choice = choices.get(0);
+    Map<String, String> message = (Map<String, String>) choice.get("message");
+    return message.get("content");
   }
 
   public String processPageContent(String rawContent, Grade grade) {
@@ -61,20 +74,10 @@ public class AIPromptService {
           .userMessage(userPrompt)
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
-
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
+      Map<String, Object> response = requestToApi(requestBody);
       log.info("AI 블록생성 응답: {}", response);
 
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String content = message.get("content");
+      String content = extractMessageContent(response);
 
       if (content.contains("```json")) {
         content = content.substring(content.indexOf("```json") + 7);
@@ -110,20 +113,10 @@ public class AIPromptService {
           .userMessage(userPrompt)
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
-
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
+      Map<String, Object> response = requestToApi(requestBody);
       log.info("AI 블록생성 응답: {}", response);
 
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String title = message.get("content").trim();
+      String title = extractMessageContent(response).trim();
 
       // 불필요한 따옴표, 마침표 등 제거
       title = title.replaceAll("^\"|\"$|^'|'$|\\.$", "");
@@ -152,19 +145,9 @@ public class AIPromptService {
           .userMessage(userPrompt)
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
+      Map<String, Object> response = requestToApi(requestBody);
 
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String levelStr = message.get("content").trim();
+      String levelStr = extractMessageContent(response).trim();
 
       levelStr = levelStr.replaceAll("[^0-9]", "");
       int level = Integer.parseInt(levelStr);
@@ -223,19 +206,9 @@ public class AIPromptService {
           .userMessage(userPrompt)
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
+      Map<String, Object> response = requestToApi(requestBody);
 
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String content2 = message.get("content");
+      String content2 = extractMessageContent(response).trim();
 
       if (content2.contains("```json")) {
         content2 = content2.substring(content2.indexOf("```json") + 7);
@@ -308,19 +281,9 @@ public class AIPromptService {
           .userMessage(promptBuilder.toString())
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
+      Map<String, Object> response = requestToApi(requestBody);
 
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String content2 = message.get("content");
+      String content2 = extractMessageContent(response).trim();
 
       log.info("AI 이미지 원본 응답: {}", content2);
 
@@ -386,19 +349,9 @@ public class AIPromptService {
           .userMessage(userPrompt)
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
+      Map<String, Object> response = requestToApi(requestBody);
 
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String content = message.get("content");
+      String content = extractMessageContent(response);
 
       log.info("AI 원본 응답: {}", content);
 
@@ -455,19 +408,12 @@ public class AIPromptService {
           .userMessage(text)
           .build();
 
-      HttpHeaders headers = new HttpHeaders();
-      headers.setContentType(MediaType.APPLICATION_JSON);
-      headers.set("Authorization", "Bearer " + aiApiKey);
+      Map<String, Object> response = requestToApi(requestBody);
 
-      HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-      Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
       log.info("OpenAI 번역 응답: {}", response);
 
-      @SuppressWarnings("unchecked")
-      List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-      Map<String, Object> choice = choices.get(0);
-      Map<String, String> message = (Map<String, String>) choice.get("message");
-      String content = message.get("content");
+      String content = extractMessageContent(response);
+
       if (content == null) {
         return "";
       }
