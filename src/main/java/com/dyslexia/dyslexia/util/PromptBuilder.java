@@ -20,7 +20,7 @@ public static final String BLOCK_SYSTEM_PROMPT = """
 - BlockType: TEXT, HEADING1, HEADING2, HEADING3, LIST, DOTTED, IMAGE, TABLE
 - 공통 필드: id(string), type(string)
 - 각 type별 필드:
-  - TEXT: text(string) - 15단어 이하 단문
+  - TEXT: text(string) - 15단어 이하 단문, blank(boolean) - 문맥이 끝나는 문장의 경우 true 로 하여 다음 문맥 간 공백을 입력한다.
   - HEADING1~3: text(string) - 간결한 제목
   - LIST/DOTTED: items(string[]) - 각 항목도 짧게
   - TABLE: headers(string[]), rows(string[][])
