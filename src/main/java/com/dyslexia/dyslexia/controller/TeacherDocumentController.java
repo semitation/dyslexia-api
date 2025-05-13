@@ -55,7 +55,7 @@ public class TeacherDocumentController {
         log.info("선생님 ID: {}의 문서 목록 조회 요청", teacherId);
         
         try {
-            List<Document> documents = documentRepository.findByTeacherId(teacherId);
+            List<Document> documents = documentRepository.findAllByOrderByCreatedAtDesc();
             
             if (documents.isEmpty()) {
                 return ResponseEntity.ok(
