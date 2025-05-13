@@ -1,10 +1,25 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.domain.pdf.Block;
+import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.ImageType;
 import com.dyslexia.dyslexia.enums.TermType;
+import com.dyslexia.dyslexia.util.ChatRequestBuilder;
+import com.dyslexia.dyslexia.util.PromptBuilder;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -12,17 +27,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import com.dyslexia.dyslexia.domain.pdf.Block;
-import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.dyslexia.dyslexia.util.PromptBuilder;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Pattern;
-import java.util.regex.Matcher;
 
 @Service
 @Slf4j
@@ -31,44 +35,42 @@ public class AIPromptService {
 
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
-    
+
     @Value("${ai.api.url}")
     private String aiApiUrl;
-    
+
     @Value("${ai.api.key}")
     private String aiApiKey;
 
-    private static final String MODEL = "gpt-4.1";
+    private static final String MODEL = "gpt-4o-mini";
+
+    private void HttpHeader(Map<String, Object> requestBody)
+    {
+
+    }
 
     public String processPageContent(String rawContent, Grade grade) {
         log.info("페이지 콘텐츠 처리 시작, 난이도: {}", grade);
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
-
-            List<Map<String, String>> messages = new ArrayList<>();
-
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
             String systemPrompt = new PromptBuilder()
                 .add(PromptBuilder.BLOCK_SYSTEM_PROMPT, Map.of("grade", grade.name()))
                 .build();
-            systemMessage.put("content", systemPrompt);
-            messages.add(systemMessage);
 
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent);
-            messages.add(userMessage);
+            String userPrompt = "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent;
 
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.3);
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.3)
+                .systemMessage(systemPrompt)
+                .userMessage(userPrompt)
+                .build();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + aiApiKey);
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
             log.info("AI 블록생성 응답: {}", response);
 
@@ -95,118 +97,101 @@ public class AIPromptService {
             throw new RuntimeException("AI를 통한 페이지 처리 중 오류가 발생했습니다.", e);
         }
     }
-    
+
     public String extractSectionTitle(String rawContent) {
         log.info("섹션 제목 추출 시작");
-        
+
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
-            
-            List<Map<String, String>> messages = new ArrayList<>();
-            
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", PromptBuilder.SECTION_TITLE_SYSTEM_PROMPT);
-            messages.add(systemMessage);
-            
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", "다음 텍스트에서 섹션 제목을 추출해 주세요. 명확한 제목이 없으면 내용을 가장 잘 대표하는 제목을 생성해 주세요 여러개의 제목이 포함되는 경우 포괄적으로 이해할 수 있는 한 문장으로 바꿔주세요.: \n\n" +
-                    (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent));
-            messages.add(userMessage);
-            
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.3);
-            
+            String userPrompt = "다음 텍스트에서 섹션 제목을 추출해 주세요. 명확한 제목이 없으면 내용을 가장 잘 대표하는 제목을 생성해 주세요 여러개의 제목이 포함되는 경우 포괄적으로 이해할 수 있는 한 문장으로 바꿔주세요.: \n\n" +
+                                (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent);
+
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.3)
+                .systemMessage(PromptBuilder.SECTION_TITLE_SYSTEM_PROMPT)
+                .userMessage(userPrompt)
+                .build();
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + aiApiKey);
-            
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
             log.info("AI 블록생성 응답: {}", response);
-            
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
             Map<String, Object> choice = choices.get(0);
             Map<String, String> message = (Map<String, String>) choice.get("message");
             String title = message.get("content").trim();
-            
+
             // 불필요한 따옴표, 마침표 등 제거
             title = title.replaceAll("^\"|\"$|^'|'$|\\.$", "");
-            
+
             log.info("섹션 제목 추출 완료: {}", title);
             return title;
-            
+
         } catch (Exception e) {
             log.error("섹션 제목 추출 중 오류 발생", e);
             return "제목 없음";
         }
     }
-    
+
     public Integer calculateReadingLevel(String content) {
         log.info("읽기 난이도 계산 시작");
-        
+
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
-            
-            List<Map<String, String>> messages = new ArrayList<>();
-            
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", PromptBuilder.READING_LEVEL_SYSTEM_PROMPT);
-            messages.add(systemMessage);
-            
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", "다음 텍스트의 읽기 난이도를 분석하여 1(매우 쉬움)부터 10(매우 어려움)까지의 숫자로만 응답해 주세요: \n\n" + 
-                    (content.length() > 1000 ? content.substring(0, 1000) : content));
-            messages.add(userMessage);
-            
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.3);
-            
+
+            String userPrompt = "다음 텍스트의 읽기 난이도를 분석하여 1(매우 쉬움)부터 10(매우 어려움)까지의 숫자로만 응답해 주세요: \n\n" +
+                                (content.length() > 1000 ? content.substring(0, 1000) : content);
+
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.3)
+                .systemMessage(PromptBuilder.READING_LEVEL_SYSTEM_PROMPT)
+                .userMessage(userPrompt)
+                .build();
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             headers.set("Authorization", "Bearer " + aiApiKey);
-            
+
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
-            
+
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-                
+
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
             Map<String, Object> choice = choices.get(0);
             Map<String, String> message = (Map<String, String>) choice.get("message");
             String levelStr = message.get("content").trim();
-            
+
             levelStr = levelStr.replaceAll("[^0-9]", "");
             int level = Integer.parseInt(levelStr);
-            
+
             if (level < 1) level = 1;
             if (level > 10) level = 10;
-            
+
             log.info("읽기 난이도 계산 완료: {}", level);
             return level;
-            
+
         } catch (Exception e) {
             log.error("읽기 난이도 계산 중 오류 발생", e);
             return 5; // 오류 시 중간 값으로 대체
         }
     }
-    
+
     public Integer countWords(String content) {
         if (content == null || content.isEmpty()) {
             return 0;
         }
-        
+
         String[] words = content.trim().split("\\s+");
         return words.length;
     }
-    
+
      // 텍스트의 복잡도 점수 계산 (0.0-1.0 사이 값)
     public Float calculateComplexityScore(String content) {
         try {
@@ -217,31 +202,24 @@ public class AIPromptService {
             return 0.5f;
         }
     }
-    
+
      // 키워드/어려운 용어를 추출하고 설명을 생성
     public List<TermInfo> extractTerms(String content, Grade grade) {
         log.info("키워드 추출 시작");
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
 
-            List<Map<String, String>> messages = new ArrayList<>();
-
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
             String systemPrompt = new PromptBuilder()
                 .add(PromptBuilder.TERM_EXTRACT_SYSTEM_PROMPT, Map.of("grade", grade.name()))
                 .build();
-            systemMessage.put("content", systemPrompt);
-            messages.add(systemMessage);
 
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", "다음 교육 자료에서 어려운 용어를 찾고 설명해 주세요: \n\n" + content);
-            messages.add(userMessage);
+            String userPrompt = "다음 교육 자료에서 어려운 용어를 찾고 설명해 주세요: \n\n" + content;
 
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.3);
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.3)
+                .systemMessage(systemPrompt)
+                .userMessage(userPrompt)
+                .build();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -302,19 +280,10 @@ public class AIPromptService {
             return new ArrayList<>();
         }
     }
-    
+
     public List<ImageInfo> extractOrGenerateImages(String content, List<TermInfo> terms) {
         log.info("이미지 생성 시작");
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
-
-            List<Map<String, String>> messages = new ArrayList<>();
-
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", PromptBuilder.IMAGE_EXTRACT_SYSTEM_PROMPT);
-            messages.add(systemMessage);
 
             StringBuilder promptBuilder = new StringBuilder();
             promptBuilder.append("다음 교육 자료와 어려운 용어 목록을 분석하여, 필요한 이미지를 생성해 주세요:\n\n");
@@ -327,13 +296,12 @@ public class AIPromptService {
                 }
             }
 
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", promptBuilder.toString());
-            messages.add(userMessage);
-
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.5);
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.5)
+                .systemMessage(PromptBuilder.IMAGE_EXTRACT_SYSTEM_PROMPT)
+                .userMessage(promptBuilder.toString())
+                .build();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -395,30 +363,23 @@ public class AIPromptService {
             return new ArrayList<>();
         }
     }
-    
+
     public List<Block> processPageContentToBlocks(String rawContent, Grade grade) {
         log.info("페이지 콘텐츠 Block 구조로 처리 시작, 난이도: {}", grade);
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
 
-            List<Map<String, String>> messages = new ArrayList<>();
-
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
             String systemPrompt = new PromptBuilder()
                 .add(PromptBuilder.BLOCK_SYSTEM_PROMPT, Map.of("grade", grade.name()))
                 .build();
-            systemMessage.put("content", systemPrompt);
-            messages.add(systemMessage);
 
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent);
-            messages.add(userMessage);
+            String userPrompt =  "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent;
 
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.3);
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.3)
+                .systemMessage(systemPrompt)
+                .userMessage(userPrompt)
+                .build();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -473,27 +434,19 @@ public class AIPromptService {
             throw new RuntimeException("AI를 통한 Block 구조 변환 중 오류가 발생했습니다.", e);
         }
     }
-    
+
     public String translateTextWithOpenAI(String text) {
         log.info("OpenAI 번역 시작: 텍스트 길이: {}", text.length());
         try {
-            Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", MODEL);
 
-            List<Map<String, String>> messages = new ArrayList<>();
+            String systemPrompt = "영어 텍스트를 한국어로 자연스럽게 번역하세요. 번역 결과만 반환하세요. 설명, 마크다운, 코드블록 없이 번역문만 출력하세요.";
 
-            Map<String, String> systemMessage = new HashMap<>();
-            systemMessage.put("role", "system");
-            systemMessage.put("content", "영어 텍스트를 한국어로 자연스럽게 번역하세요. 번역 결과만 반환하세요. 설명, 마크다운, 코드블록 없이 번역문만 출력하세요.");
-            messages.add(systemMessage);
-
-            Map<String, String> userMessage = new HashMap<>();
-            userMessage.put("role", "user");
-            userMessage.put("content", text);
-            messages.add(userMessage);
-
-            requestBody.put("messages", messages);
-            requestBody.put("temperature", 0.3);
+            Map<String, Object> requestBody = new ChatRequestBuilder()
+                .model(MODEL)
+                .temperature(0.3)
+                .systemMessage(systemPrompt)
+                .userMessage(text)
+                .build();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -518,7 +471,7 @@ public class AIPromptService {
             throw new RuntimeException("OpenAI 번역 실패: " + e.getMessage(), e);
         }
     }
-    
+
     @Data
     @Builder
     @NoArgsConstructor
@@ -531,7 +484,7 @@ public class AIPromptService {
         private boolean visualAidNeeded;
         private String readAloudText;
     }
-    
+
     @Data
     @Builder
     @NoArgsConstructor
