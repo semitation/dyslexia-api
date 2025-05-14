@@ -37,4 +37,3 @@ public class CourseInfoController {
     return ResponseEntity.ok(courseInfoService.getInfosByStudent(studentId));
   }
 }
-
