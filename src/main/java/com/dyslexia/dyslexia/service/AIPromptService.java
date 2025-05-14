@@ -107,13 +107,11 @@ public class AIPromptService {
           제목을 생성하는 기준: 제목이 명시적으로 존재하지 않거나 여러 주제를 포함함
           제목일 가능성이 높은 기준: 문서의 가장 앞에 위치하며, 다른 문장에 비해 짧고 간결함
           생성 시 결과: 전체 내용을 요약한 핵심 주제 기반
-          최종 결과: 20자 이내의 내용을 포괄적으로 이해할 수 있는 문맥상 자연스러운 제목
+          최종 결과:  불필요한 특수 문자 없이 20자 이내의 내용을 포괄적으로 이해할 수 있는 문맥상 자연스러운 제목
           
           
           """
           +
-          // "다음 텍스트에서 섹션 제목을 추출하세요. 명확한 제목이 없으면 내용을 포괄적으로 이해할 수 있도록 단 하나의 제목을 생성하세요. 한 문장으로만 출력하세요.: \n\n"
-          // +
           (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent);
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
@@ -129,7 +127,7 @@ public class AIPromptService {
       String title = extractMessageContent(response).trim();
 
       // 불필요한 따옴표, 마침표 등 제거
-      title = title.replaceAll("^\"|\"$|^'|'$|\\.$", "");
+      // title = title.replaceAll("^\"|\"$|^'|'$|\\.$", "");
 
       log.info("섹션 제목 추출 완료: {}", title);
       return title;
@@ -405,15 +403,25 @@ public class AIPromptService {
     }
   }
 
-  public String translateTextWithOpenAI(String text) {
+  public String translateTextWithOpenAI(String text, Grade grade) {
     log.info("OpenAI 번역 시작: 텍스트 길이: {}", text.length());
     try {
 
-      String systemPrompt = "영어 텍스트를 한국어로 자연스럽게 번역하세요. 번역 결과만 반환하세요. 설명, 마크다운, 코드블록 없이 번역문만 출력하세요.";
-
+      String systemPrompt = """
+        영문을 초등학교 수준의 난독증 아동이 읽기 쉽게 한글로만 번역해줘.
+        문장의 길이는 적당하게, 한 문장에 하나의 생각만 담아줘.
+        어려운 단어나 표현은 쓰지 말고, 아주 쉬우면서 자주 사용되는 말로 바꿔줘.
+        문장을 자주 끊어주고, 줄바꿈을 자주 해서 시각적으로도 가독성이 높게 해줘.
+        감탄사나 감정 표현은 직관적이고 간단하게 바꿔줘.
+        숫자는 아라비아 숫자 그대로 표현해줘.
+        어휘 수준은 초등 %s 수준으로 해줘.
+        원문의 의미를 담으면서 문맥이 자연스럽도록 직역보단 의역해줘.
+        이제 다음 텍스트를 번역해줘:
+        """.formatted(grade.getLabel());
+      
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
-          .temperature(0.3)
+          .temperature(0.7)
           .systemMessage(systemPrompt)
           .userMessage(text)
           .build();
