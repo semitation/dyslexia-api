@@ -139,7 +139,7 @@ public class DocumentProcessService {
             // 1. DeepL 번역 수행
             // String translatedContent = deepLTranslatorService.translateText(rawContent);
             // 2. OpenAI 번역 수행
-            String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent);
+            String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent, document.getGrade());
 
             // 2. 번역된 텍스트로 AI Block 처리
             AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
