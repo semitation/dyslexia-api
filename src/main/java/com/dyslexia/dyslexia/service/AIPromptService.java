@@ -571,7 +571,7 @@ public class AIPromptService {
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
-          .temperature(0.3)
+          .temperature(1.0)
           .systemMessage(systemPrompt)
           .userMessage(text)
           .build();
