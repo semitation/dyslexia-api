@@ -289,84 +289,127 @@ public class AIPromptService {
   }
 
   public List<ImageInfo> extractOrGenerateImages(String content, List<TermInfo> terms) {
-    log.info("이미지 생성 시작");
-    try {
-      StringBuilder promptBuilder = new StringBuilder();
-      promptBuilder.append("다음 교육 자료와 어려운 용어 목록을 분석하여, 필요한 이미지를 생성해 주세요:\n\n");
-      promptBuilder.append("교육 자료:\n").append(content).append("\n\n");
+        log.info("이미지 생성 시작");
+        try {
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", "gpt-4");
 
-      promptBuilder.append("어려운 용어 목록:\n");
-      for (TermInfo term : terms) {
-        if (term.isVisualAidNeeded()) {
-          promptBuilder.append("- ").append(term.getTerm()).append(": ")
-              .append(term.getExplanation()).append("\n");
+            List<Map<String, String>> messages = new ArrayList<>();
+
+            Map<String, String> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", "당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, " +
+                "설명하는 이미지를 생성하는 전문가입니다. 생성하는 이미지 설명에서는 다음 규칙을 반드시 지켜주세요:\n" +
+                "1. 고유명사나 캐릭터 이름은 일반적인 용어로 대체하세요 (예: '앨리스' → '소녀', '에스콰이어' → '호칭')\n" +
+                "2. 문맥을 모르면 이해하기 어려운 용어는 설명을 추가하세요\n" +
+                "3. 초등학생이 이해할 수 있는 보편적인 개념과 표현만 사용하세요\n\n" +
+                "반드시 아래 JSON 배열 형식으로만 응답해 주세요:\n" +
+                "[{\"description\": \"생성할 이미지의 설명\", \"imageType\": \"CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION\", " +
+                "\"conceptReference\": \"관련 개념\", \"altText\": \"이미지 대체 텍스트\", \"position\": {\"page\": 페이지번호}}]");
+            messages.add(systemMessage);
+
+            StringBuilder promptBuilder = new StringBuilder();
+            promptBuilder.append("다음 교육 자료와 어려운 용어 목록을 분석하여, 필요한 이미지를 생성해 주세요:\n\n");
+            promptBuilder.append("교육 자료:\n").append(content).append("\n\n");
+
+            promptBuilder.append("어려운 용어 목록:\n");
+            for (TermInfo term : terms) {
+                if (term.isVisualAidNeeded()) {
+                    promptBuilder.append("- ").append(term.getTerm()).append(": ").append(term.getExplanation()).append("\n");
+                }
+            }
+
+            Map<String, String> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", promptBuilder.toString());
+            messages.add(userMessage);
+
+            requestBody.put("messages", messages);
+            requestBody.put("temperature", 0.5);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Authorization", "Bearer " + aiApiKey);
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
+
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
+            Map<String, Object> choice = choices.get(0);
+            Map<String, String> message = (Map<String, String>) choice.get("message");
+            String content2 = message.get("content");
+
+            log.info("AI 이미지 원본 응답: {}", content2);
+
+            if (content2.contains("```json")) {
+                content2 = content2.substring(content2.indexOf("```json") + 7);
+                content2 = content2.substring(0, content2.indexOf("```"));
+            } else if (content2.contains("```")) {
+                content2 = content2.substring(content2.indexOf("```") + 3);
+                content2 = content2.substring(0, content2.indexOf("```"));
+            }
+            content2 = content2.trim();
+
+            // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
+            Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
+            Matcher m = p.matcher(content2);
+            StringBuffer sb = new StringBuffer();
+            while (m.find()) {
+                m.appendReplacement(sb, m.group(1) + ".0");
+            }
+            m.appendTail(sb);
+            content2 = sb.toString();
+
+            try {
+                @SuppressWarnings("unchecked")
+                List<Map<String, Object>> imagesData = objectMapper.readValue(content2, List.class);
+                List<ImageInfo> images = new ArrayList<>();
+                
+                // 각 이미지 설명에 대해 Replicate API로 이미지 생성
+                for (Map<String, Object> imageData : imagesData) {
+                    // 이미지 생성을 위한 프롬프트 구성
+                    String description = (String) imageData.get("description");
+                    String imageTypeStr = (String) imageData.get("imageType");
+                    ImageType imageType = ImageType.valueOf(imageTypeStr);
+                    String conceptReference = (String) imageData.get("conceptReference");
+                    String altText = (String) imageData.get("altText");
+                    
+                    String imageUrl = generateImageWithReplicate(description);
+                    
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> position = (Map<String, Object>) imageData.get("position");
+                    com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
+                    
+                    String localFilePath = saveImageToLocalFile(imageUrl, conceptReference);
+                    if (!localFilePath.isEmpty()) {
+                        imageUrl = localFilePath; // imageUrl 변수를 로컬 경로로 업데이트
+                    }
+                    
+                    images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
+                }
+                
+                log.info("이미지 생성 완료: {} 개 이미지", images.size());
+                return images;
+            } catch (Exception e) {
+                log.error("이미지 JSON 파싱 실패. 원본: {}", content2, e);
+                throw new RuntimeException("AI 이미지 응답 JSON 파싱 실패: " + e.getMessage(), e);
+            }
+        } catch (Exception e) {
+            log.error("이미지 생성 중 오류 발생", e);
+            return new ArrayList<>();
         }
-      }
-
-      Map<String, Object> requestBody = new ChatRequestBuilder()
-          .model(MODEL)
-          .temperature(0.5)
-          .systemMessage(PromptBuilder.IMAGE_EXTRACT_SYSTEM_PROMPT)
-          .userMessage(promptBuilder.toString())
-          .build();
-
-      Map<String, Object> response = requestToApi(requestBody);
-      String content2 = extractMessageContent(response).trim();
-      content2 = extractJsonContent(content2);
-      content2 = processFloatingPoints(content2);
-
-      try {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> imagesData = objectMapper.readValue(content2, List.class);
-        List<ImageInfo> images = new ArrayList<>();
-        
-        for (Map<String, Object> imageData : imagesData) {
-          String description = (String) imageData.get("description");
-          String imageTypeStr = (String) imageData.get("imageType");
-          ImageType imageType = ImageType.valueOf(imageTypeStr);
-          String conceptReference = (String) imageData.get("conceptReference");
-          String altText = (String) imageData.get("altText");
-          
-          String imageUrl = generateImageWithReplicate(description);
-          
-          @SuppressWarnings("unchecked")
-          Map<String, Object> position = (Map<String, Object>) imageData.get("position");
-          com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
-          
-          String localFilePath = saveImageToLocalFile(imageUrl, conceptReference);
-          if (!localFilePath.isEmpty()) {
-            imageUrl = localFilePath;
-          }
-          
-          images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
-        }
-        
-        log.info("이미지 생성 완료: {} 개 이미지", images.size());
-        return images;
-      } catch (Exception e) {
-        log.error("이미지 JSON 파싱 실패. 원본: {}", content2, e);
-        throw new RuntimeException("AI 이미지 응답 JSON 파싱 실패: " + e.getMessage(), e);
-      }
-    } catch (Exception e) {
-      log.error("이미지 생성 중 오류 발생", e);
-      return new ArrayList<>();
     }
-  }
 
   private String generateImageWithReplicate(String description) {
     try {
       String prompt = "교육용 이미지: " + description +
           "\n\n지시사항:" +
-          "\n- 초등학생이 뜻을 이해할 수 있는 이미지를 매우 간단하고 명확하게 표현해주세요" +
-          "\n- 밝고 선명한 색상과 굵고 명확한 윤곽선을 사용해주세요" +
-          "\n- 단순하고 깔끔한 레이아웃으로 정보를 효과적으로 전달해주세요" +
-          "\n- 적절한 크기의 글자와 레이블로 핵심 정보를 표시해주세요" +
-          "\n- 명확한 시각적 계층 구조로 중요한 정보를 강조해주세요" +
-          "\n- 흰색 배경에 주요 정보만 집중해서 보여주세요" +
           "\n- 복잡한 배경이나 불필요한 요소는 제거해주세요" +
-          "\n- 텍스트는 한글을 사용해주세요";
+                "\n- 텍스트는 한글을 사용해주세요";
 
-      String selectedStyle = "digital_illustration/infantile_sketch";
+      String selectedStyle = "realistic_image";
       
       Map<String, Object> input = new HashMap<>();
       input.put("prompt", prompt);
