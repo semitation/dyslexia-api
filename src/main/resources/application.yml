@@ -59,3 +59,9 @@ deepl:
   api:
     url: https://api-free.deepl.com
     key: ${DEEPL_SECRET}
+    
+replicate:
+  api:
+    url: https://api.replicate.com/v1/predictions
+    key: ${REPLICATE_API_KEY}
+    model: recraft-ai/recraft-v3
