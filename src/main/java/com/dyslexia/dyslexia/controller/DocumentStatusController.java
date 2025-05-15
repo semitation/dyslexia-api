@@ -36,8 +36,6 @@ public class DocumentStatusController {
             @Parameter(description = "문서 ID", required = true) 
             @PathVariable("documentId") Long documentId) {
         
-        log.info("문서 ID: {}의 처리 상태 조회 요청", documentId);
-        
         try {
             DocumentProcessStatus status = documentProcessService.getDocumentProcessStatus(documentId);
             int progress = documentProcessService.calculateDocumentProcessProgress(documentId);

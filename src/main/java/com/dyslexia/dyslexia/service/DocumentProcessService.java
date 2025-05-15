@@ -15,6 +15,7 @@ import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -26,6 +27,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
+import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
+import com.dyslexia.dyslexia.domain.pdf.TextBlock;
+import com.dyslexia.dyslexia.service.VocabularyAnalysisPromptService;
 
 @Service
 @Slf4j
@@ -43,6 +48,8 @@ public class DocumentProcessService {
     private final Executor taskExecutor;
     private final ObjectMapper objectMapper;
     private final DeepLTranslatorService deepLTranslatorService;
+    private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
+    private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
 
     @Transactional
     public Document uploadDocument(Long teacherId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
@@ -135,7 +142,8 @@ public class DocumentProcessService {
             String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent);
 
             // 2. 번역된 텍스트로 AI Block 처리
-            String processedContentStr = aiPromptService.processPageContent(translatedContent, document.getGrade());
+            AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
+            String processedContentStr = blockAnalysisResult.getOriginalContent();
             com.fasterxml.jackson.databind.JsonNode processedContent;
             try {
                 processedContent = objectMapper.readTree(processedContentStr);
@@ -143,6 +151,18 @@ public class DocumentProcessService {
                 log.error("JSON 변환 중 오류 발생", e);
                 throw new RuntimeException("처리된 콘텐츠를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
             }
+
+            log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
+            log.info("블럭 한개: {}", blockAnalysisResult.getBlocks().get(0));
+            List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
+                .filter(block -> block.getType() != null && block.getType().name().equals("TEXT"))
+                .map(block -> (TextBlock) block)
+                .toList();
+
+            log.info("textBlock 개수: {}", textBlocks.size());
+
+            textBlocks.parallelStream()
+                .forEach(textBlock -> analyzeAndSaveVocabularyAsync(textBlock, document.getId(), pageNumber));
 
             // 3. 메타데이터 추출 (번역된 텍스트 기반)
             String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
@@ -283,4 +303,44 @@ public class DocumentProcessService {
 
         return document;
     }
+
+    // Block의 content에 대해 어휘 분석을 실행하고, 결과를 VocabularyAnalysis 엔티티로 저장 (비동기)
+    private void analyzeAndSaveVocabularyAsync(TextBlock textBlock, Long documentId, int pageNumber) {
+        CompletableFuture.runAsync(() -> {
+            try {
+                // 1. 기본 어휘 분석 수행
+                String basicAnalysisJson = vocabularyAnalysisPromptService.analyzeVocabularyBasic(textBlock.getText(), 3);
+                List<Map<String, Object>> basicAnalysisList = objectMapper.readValue(basicAnalysisJson, List.class);
+                
+                // 2. 각 단어에 대해 음소 분석 수행 및 저장
+                for (Map<String, Object> basicAnalysis : basicAnalysisList) {
+                    String word = (String) basicAnalysis.get("word");
+                    String phonemeAnalysisJson = vocabularyAnalysisPromptService.analyzePhonemeAnalysis(word);
+                    
+                    // 3. 기본 분석과 음소 분석 결과를 결합하여 저장
+                    VocabularyAnalysis entity = VocabularyAnalysis.builder()
+                        .documentId(documentId)
+                        .pageNumber(pageNumber)
+                        .blockId(textBlock.getId())
+                        .word(word)
+                        .startIndex((Integer) basicAnalysis.getOrDefault("startIndex", null))
+                        .endIndex((Integer) basicAnalysis.getOrDefault("endIndex", null))
+                        .definition((String) basicAnalysis.getOrDefault("definition", null))
+                        .simplifiedDefinition((String) basicAnalysis.getOrDefault("simplifiedDefinition", null))
+                        .examples(basicAnalysis.get("examples") != null ? objectMapper.writeValueAsString(basicAnalysis.get("examples")) : null)
+                        .difficultyLevel((String) basicAnalysis.getOrDefault("difficultyLevel", null))
+                        .reason((String) basicAnalysis.getOrDefault("reason", null))
+                        .gradeLevel(basicAnalysis.get("gradeLevel") != null ? (Integer) basicAnalysis.get("gradeLevel") : null)
+                        .phonemeAnalysisJson(phonemeAnalysisJson)
+                        .createdAt(java.time.LocalDateTime.now())
+                        .build();
+                    vocabularyAnalysisRepository.save(entity);
+                    log.info("어휘 분석 저장 완료: word={}, documentId={}, pageNumber={}", word, documentId, pageNumber);
+                }
+            } catch (Exception e) {
+                log.error("어휘 분석 및 저장 실패: blockId={}, pageNumber={}", textBlock.getId(), pageNumber, e);
+            }
+        }, taskExecutor);
+    }
+
 } 
