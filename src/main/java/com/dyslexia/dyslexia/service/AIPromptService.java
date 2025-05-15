@@ -292,7 +292,7 @@ public class AIPromptService {
         log.info("이미지 생성 시작");
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put("model", "gpt-4");
+            requestBody.put("model", MODEL);
 
             List<Map<String, String>> messages = new ArrayList<>();
 
@@ -381,12 +381,13 @@ public class AIPromptService {
                     @SuppressWarnings("unchecked")
                     Map<String, Object> position = (Map<String, Object>) imageData.get("position");
                     com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
-                    
-                    String localFilePath = saveImageToLocalFile(imageUrl, conceptReference);
-                    if (!localFilePath.isEmpty()) {
-                        imageUrl = localFilePath; // imageUrl 변수를 로컬 경로로 업데이트
-                    }
-                    
+
+                    // TODO: 로컬 파일로 처리하려면 로직을 더 수정해야할듯함. 그러기보다는 imageUrl 원본 그대로 사용해도 될듯..? - 은기  to 동현
+//                    String localFilePath = saveImageToLocalFile(imageUrl, conceptReference);
+//                    if (!localFilePath.isEmpty()) {
+//                        imageUrl = localFilePath; // imageUrl 변수를 로컬 경로로 업데이트
+//                    }
+//
                     images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
                 }
                 
