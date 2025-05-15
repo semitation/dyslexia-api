@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.config.ReplicateConfig;
 import com.dyslexia.dyslexia.domain.pdf.Block;
 import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
 import com.dyslexia.dyslexia.enums.Grade;
@@ -9,6 +10,19 @@ import com.dyslexia.dyslexia.util.ChatRequestBuilder;
 import com.dyslexia.dyslexia.util.PromptBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.dyslexia.dyslexia.util.DocumentProcessHolder;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URI;
+import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -40,6 +54,10 @@ public class AIPromptService {
   private String aiApiUrl;
   @Value("${ai.api.key}")
   private String aiApiKey;
+
+  private final ReplicateConfig replicateConfig;
+  @Value("${app.upload.dir:uploads}")
+  private String uploadDir;
 
   private Map<String, Object> requestToApi(Map<String, Object> requestBody) {
     HttpHeaders headers = new HttpHeaders();
@@ -303,15 +321,22 @@ public class AIPromptService {
         List<ImageInfo> images = new ArrayList<>();
         
         for (Map<String, Object> imageData : imagesData) {
-          String imageUrl = (String) imageData.get("imageUrl");
+          String description = (String) imageData.get("description");
           String imageTypeStr = (String) imageData.get("imageType");
           ImageType imageType = ImageType.valueOf(imageTypeStr);
           String conceptReference = (String) imageData.get("conceptReference");
           String altText = (String) imageData.get("altText");
           
+          String imageUrl = generateImageWithReplicate(description);
+          
           @SuppressWarnings("unchecked")
           Map<String, Object> position = (Map<String, Object>) imageData.get("position");
           com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
+          
+          String localFilePath = saveImageToLocalFile(imageUrl, conceptReference);
+          if (!localFilePath.isEmpty()) {
+            imageUrl = localFilePath;
+          }
           
           images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
         }
@@ -328,45 +353,171 @@ public class AIPromptService {
     }
   }
 
-  public List<Block> processPageContentToBlocks(String rawContent, Grade grade) {
-    log.info("페이지 콘텐츠 Block 구조로 처리 시작, 난이도: {}", grade);
+  private String generateImageWithReplicate(String description) {
     try {
-      String systemPrompt = new PromptBuilder()
-          .add(PromptBuilder.BLOCK_SYSTEM_PROMPT, Map.of("grade", grade.name()))
+      String prompt = "교육용 이미지: " + description +
+          "\n\n지시사항:" +
+          "\n- 초등학생이 뜻을 이해할 수 있는 이미지를 매우 간단하고 명확하게 표현해주세요" +
+          "\n- 밝고 선명한 색상과 굵고 명확한 윤곽선을 사용해주세요" +
+          "\n- 단순하고 깔끔한 레이아웃으로 정보를 효과적으로 전달해주세요" +
+          "\n- 적절한 크기의 글자와 레이블로 핵심 정보를 표시해주세요" +
+          "\n- 명확한 시각적 계층 구조로 중요한 정보를 강조해주세요" +
+          "\n- 흰색 배경에 주요 정보만 집중해서 보여주세요" +
+          "\n- 복잡한 배경이나 불필요한 요소는 제거해주세요" +
+          "\n- 텍스트는 한글을 사용해주세요";
+
+      String selectedStyle = "digital_illustration/infantile_sketch";
+      
+      Map<String, Object> input = new HashMap<>();
+      input.put("prompt", prompt);
+      input.put("style", selectedStyle);
+      input.put("size", "1024x1024");
+      
+      Map<String, Object> requestBody = new HashMap<>();
+      requestBody.put("version", "recraft-ai/recraft-v3");
+      requestBody.put("input", input);
+      
+      String jsonBody = objectMapper.writeValueAsString(requestBody);
+      log.info("Replicate API 요청: {}", jsonBody);
+      
+      HttpClient client = HttpClient.newHttpClient();
+      HttpRequest request = HttpRequest.newBuilder()
+          .uri(URI.create(replicateConfig.getUrl()))
+          .header("Content-Type", "application/json")
+          .header("Authorization", "Token " + replicateConfig.getKey())
+          .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
           .build();
-
-      String userPrompt = "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent;
-
-      Map<String, Object> requestBody = new ChatRequestBuilder()
-          .model(MODEL)
-          .temperature(0.3)
-          .systemMessage(systemPrompt)
-          .userMessage(userPrompt)
-          .build();
-
-      Map<String, Object> response = requestToApi(requestBody);
-      String content = extractMessageContent(response);
-      content = extractJsonContent(content);
-
-      if (!(content.startsWith("[") && content.endsWith("]"))) {
-        log.info("AI 응답이 Block 구조(JSON 배열)가 아님. content: {}", content);
-        return new ArrayList<>();
+      
+      HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+      String responseBody = response.body();
+      log.info("Replicate API 응답 (status: {}): {}", response.statusCode(), responseBody);
+      
+      if (response.statusCode() != 201) {
+        log.error("Replicate API 호출 실패. 상태 코드: {}, 응답: {}", response.statusCode(), responseBody);
+        return "";
       }
-
-      content = processFloatingPoints(content);
-
-      try {
-        List<BlockImpl> blockImpls = objectMapper.readValue(content, new TypeReference<>() {});
-        List<Block> blocks = new ArrayList<>(blockImpls);
-        log.info("Block 구조 변환 완료: {}개 블록", blocks.size());
-        return blocks;
-      } catch (Exception e) {
-        log.error("Block 구조 JSON 파싱 실패. 원본: {}", content, e);
-        throw new RuntimeException("AI 응답 JSON 파싱 실패: " + e.getMessage(), e);
+      
+      JsonNode responseJson = objectMapper.readTree(responseBody);
+      
+      if (!responseJson.has("id")) {
+        log.error("Replicate API 응답에 id 필드가 없습니다: {}", responseBody);
+        return "";
       }
+      
+      String predictionId = responseJson.get("id").asText();
+      log.info("Prediction ID: {}", predictionId);
+      
+      String getUrl = replicateConfig.getUrl() + "/" + predictionId;
+      int maxRetries = 20;
+      int retryCount = 0;
+      
+      while (retryCount < maxRetries) {
+        Thread.sleep(3000);
+        
+        HttpRequest getRequest = HttpRequest.newBuilder()
+            .uri(URI.create(getUrl))
+            .header("Authorization", "Token " + replicateConfig.getKey())
+            .GET()
+            .build();
+        
+        HttpResponse<String> getResponse = client.send(getRequest, HttpResponse.BodyHandlers.ofString());
+        String getResponseBody = getResponse.body();
+        
+        log.info("Replicate API 폴링 응답 #{} (status: {})", retryCount + 1, getResponse.statusCode());
+        
+        JsonNode getResponseJson = objectMapper.readTree(getResponseBody);
+        
+        if (getResponseJson.has("status")) {
+          String status = getResponseJson.get("status").asText();
+          
+          if ("succeeded".equals(status)) {
+            if (getResponseJson.has("output")) {
+              JsonNode output = getResponseJson.get("output");
+              
+              String imageUrl = null;
+              if (output != null && !output.isNull()) {
+                if (output.isArray() && output.size() > 0) {
+                  imageUrl = output.get(0).asText();
+                } else if (output.isTextual()) {
+                  imageUrl = output.asText();
+                }
+                
+                if (imageUrl != null && !imageUrl.isEmpty()) {
+                  log.info("이미지 URL 생성 성공: {}", imageUrl);
+                  return imageUrl;
+                }
+              }
+              
+              log.warn("Output 필드가 비어있거나 예상된 형식이 아닙니다. Raw output: {}", output);
+              return "";
+            } else {
+              log.warn("Status가 succeeded이지만 output 필드가 없습니다: {}", getResponseBody);
+              return "";
+            }
+          } else if ("failed".equals(status)) {
+            String error = getResponseJson.has("error") ? getResponseJson.get("error").asText() : "알 수 없는 오류";
+            log.error("이미지 생성 실패: {}", error);
+            return "";
+          } else if ("canceled".equals(status)) {
+            log.error("이미지 생성이 취소되었습니다.");
+            return "";
+          } else {
+            log.info("이미지 생성 상태: {}, 다시 시도합니다...", status);
+          }
+        }
+        
+        retryCount++;
+      }
+      
+      log.error("최대 재시도 횟수({})에 도달했습니다. 이미지 URL을 가져오지 못했습니다.", maxRetries);
+      return "";
+      
     } catch (Exception e) {
-      log.error("Block 구조 변환 중 오류 발생", e);
-      throw new RuntimeException("AI를 통한 Block 구조 변환 중 오류가 발생했습니다.", e);
+      log.error("Replicate API를 사용한 이미지 생성 중 오류 발생: {}", e.getMessage(), e);
+      return "";
+    }
+  }
+
+  private String saveImageToLocalFile(String imageUrl, String conceptReference) {
+    try {
+      String pdfFolderPath = DocumentProcessHolder.getPdfFolderPath();
+      
+      if (pdfFolderPath == null || pdfFolderPath.isEmpty()) {
+        log.warn("PDF 폴더 경로가 없습니다. 이미지를 로컬에 저장하지 않고 URL만 반환합니다.");
+        return imageUrl;
+      }
+      
+      Path directory = Paths.get(pdfFolderPath);
+      if (!Files.exists(directory)) {
+        Files.createDirectories(directory);
+        log.info("PDF 폴더 생성 완료: {}", directory.toAbsolutePath());
+      }
+      
+      String sanitizedName = conceptReference.replaceAll("[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s]", "_")
+                                          .replaceAll("\\s+", "_");
+      String fileName = sanitizedName + "_" + System.currentTimeMillis() + ".png";
+      Path filePath = directory.resolve(fileName);
+      
+      URL url = new URL(imageUrl);
+      try (java.io.InputStream in = url.openStream()) {
+        Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
+      }
+      
+      log.info("이미지가 PDF와 동일한 폴더에 저장되었습니다: {}", filePath);
+      
+      String relativePath = pdfFolderPath;
+      if (relativePath.startsWith(uploadDir)) {
+        relativePath = relativePath.substring(uploadDir.length());
+      }
+      if (relativePath.startsWith("/")) {
+        relativePath = relativePath.substring(1);
+      }
+      
+      return "/" + relativePath + "/" + fileName;
+      
+    } catch (Exception e) {
+      log.error("이미지를 로컬에 저장하는 중 오류 발생: {}", e.getMessage(), e);
+      return imageUrl;
     }
   }
 
