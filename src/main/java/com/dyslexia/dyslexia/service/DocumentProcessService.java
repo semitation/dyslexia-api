@@ -138,23 +138,6 @@ public class DocumentProcessService {
     public void processPage(Document document, int pageNumber, String rawContent) {
         try {
             log.info("페이지 처리 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-
-            Optional<Page> existingPage = pageRepository.findByDocumentAndPageNumber(document, pageNumber);
-            if (existingPage.isPresent() &&
-                existingPage.get().getProcessingStatus() == DocumentProcessStatus.COMPLETED) {
-                log.info("페이지가 이미 처리되었습니다: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-                return;
-            }
-
-            // 1. DeepL 번역 수행
-            // String translatedContent = deepLTranslatorService.translateText(rawContent);
-            // 2. OpenAI 번역 수행
-            String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent);
-
-            // 2. 번역된 텍스트로 AI Block 처리
-            AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
-            String processedContentStr = blockAnalysisResult.getOriginalContent();
-            com.fasterxml.jackson.databind.JsonNode processedContent;
             
             // 파일 경로에서 폴더 경로 추출 (파일명 제외)
             String filePath = document.getFilePath();
@@ -174,30 +157,12 @@ public class DocumentProcessService {
                     return;
                 }
 
-            log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
-            log.info("블럭 한개: {}", blockAnalysisResult.getBlocks().get(0));
-            List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
-                .filter(block -> block.getType() != null && block.getType().name().equals("TEXT"))
-                .map(block -> (TextBlock) block)
-                .toList();
-
-            log.info("textBlock 개수: {}", textBlocks.size());
-
-            textBlocks.parallelStream()
-                .forEach(textBlock -> analyzeAndSaveVocabularyAsync(textBlock, document.getId(), pageNumber));
-
-            // 3. 메타데이터 추출 (번역된 텍스트 기반)
-            String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
-            Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
-            Integer wordCount = aiPromptService.countWords(translatedContent);
-            Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
-                // 1. DeepL 번역 수행
-                // String translatedContent = deepLTranslatorService.translateText(rawContent);
-                // 2. OpenAI 번역 수행
+                // 1. OpenAI 번역 수행
                 String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent);
 
                 // 2. 번역된 텍스트로 AI Block 처리
-                String processedContentStr = aiPromptService.processPageContent(translatedContent, document.getGrade());
+                AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
+                String processedContentStr = blockAnalysisResult.getOriginalContent();
                 com.fasterxml.jackson.databind.JsonNode processedContent;
                 try {
                     processedContent = objectMapper.readTree(processedContentStr);
@@ -205,6 +170,18 @@ public class DocumentProcessService {
                     log.error("JSON 변환 중 오류 발생", e);
                     throw new RuntimeException("처리된 콘텐츠를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
                 }
+
+                log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
+                log.info("블럭 한개: {}", blockAnalysisResult.getBlocks().get(0));
+                List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
+                    .filter(block -> block.getType() != null && block.getType().name().equals("TEXT"))
+                    .map(block -> (TextBlock) block)
+                    .toList();
+
+                log.info("textBlock 개수: {}", textBlocks.size());
+
+                textBlocks.parallelStream()
+                    .forEach(textBlock -> analyzeAndSaveVocabularyAsync(textBlock, document.getId(), pageNumber));
 
                 // 3. 메타데이터 추출 (번역된 텍스트 기반)
                 String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
