@@ -3,6 +3,8 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.config.ReplicateConfig;
 import com.dyslexia.dyslexia.domain.pdf.Block;
 import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
+import com.dyslexia.dyslexia.domain.pdf.BlockType;
+import com.dyslexia.dyslexia.domain.pdf.PageImageBlock;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.ImageType;
 import com.dyslexia.dyslexia.enums.TermType;
@@ -41,6 +43,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -134,10 +137,60 @@ public class AIPromptService {
 
       try {
         List<BlockImpl> blockImpls = objectMapper.readValue(content, new TypeReference<>() {});
-        List<Block> blocks = new ArrayList<>(blockImpls);
+        log.info("역직렬화된 블록 수: {}", blockImpls.size());
+        
+        // 각 블록의 타입 로깅
         blockImpls.forEach(block -> {
-          log.info(block.toString());
+            log.info("블록 정보 - ID: {}, Raw Type: {}, JSON: {}", 
+                block.getId(), 
+                block.getType(), 
+                block);
         });
+        
+        // Stream을 사용하여 블록 처리 및 이미지 생성을 통합
+        List<Block> blocks = blockImpls.stream()
+            .map(block -> {
+                try {
+                    BlockType blockType = block.getType();
+                    log.info("블록 처리 - ID: {}, Type: {}", block.getId(), blockType);
+                    
+                    if (blockType == BlockType.PAGE_IMAGE) {
+                        log.info("PAGE_IMAGE 블록 처리 시작 - ID: {}", block.getId());
+                        if (block instanceof PageImageBlock pageImageBlock) {
+                            log.info("PAGE_IMAGE 상세 정보 - Prompt: {}, Alt: {}, Concept: {}", 
+                                pageImageBlock.getPrompt(), 
+                                pageImageBlock.getAlt(), 
+                                pageImageBlock.getConcept());
+                        }
+                        String imagePrompt = block.getPromptForImage();
+                        log.info("이미지 프롬프트: {}", imagePrompt);
+                        
+                        if (imagePrompt != null && !imagePrompt.isEmpty()) {
+                            String imageUrl = generateImageWithReplicate(imagePrompt);
+                            log.info("생성된 이미지 URL: {}", imageUrl);
+                            block.setUrl(imageUrl);
+                            log.info("이미지 생성 완료 - ID: {}, Concept: {}, URL: {}",
+                                block.getId(), block.getConcept(), imageUrl);
+                            log.info("이미지가 주입된 블록: {}", block);
+                        } else {
+                            log.warn("이미지 프롬프트가 비어있음 - ID: {}", block.getId());
+                        }
+                    }
+                    return (Block) block;
+                } catch (IllegalStateException e) {
+                    log.error("블록 처리 중 오류 발생 - ID: {}, Error: {}", block.getId(), e.getMessage());
+                    throw new RuntimeException("블록 처리 실패: " + e.getMessage(), e);
+                }
+            })
+            .collect(Collectors.toList());
+
+        // 이미지 블록 처리 결과 로깅
+        List<Block> imageBlocks = blocks.stream()
+            .filter(block -> block.getType() == BlockType.PAGE_IMAGE)
+            .toList();
+        log.info("생성된 이미지 블록 수: {}", imageBlocks.size());
+        imageBlocks.forEach(block -> log.info("이미지 블록 상태 - ID: {}, URL: {}", 
+            block.getId(), ((BlockImpl)block).getUrl()));
 
         log.info("페이지 콘텐츠 처리 완료");
         return new PageBlockAnalysisResult(content, blocks);
@@ -155,7 +208,7 @@ public class AIPromptService {
     log.info("섹션 제목 추출 시작");
 
     try {
-      String userPrompt =
+      String userPrompt = 
           """
           다음 텍스트에서 섹션의 제목을 추출하거나 제목을 생성하려고 합니다.
           제목을 생성하는 기준: 제목이 명시적으로 존재하지 않거나 여러 주제를 포함함
