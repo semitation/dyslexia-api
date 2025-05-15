@@ -12,6 +12,7 @@ import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.util.DocumentProcessHolder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.List;
@@ -59,7 +60,16 @@ public class DocumentProcessService {
         String originalFilename = file.getOriginalFilename();
         String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
-        String filePath = storageService.store(file, uniqueFilename);
+        
+        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 고유 파일명: {}, 교사ID: {}", 
+                originalFilename, uniqueFilename, teacherId);
+                
+        String filePath = storageService.store(file, uniqueFilename, teacherId);
+        log.info("파일 저장 경로: {}", filePath);
+
+        // 파일 경로에서 폴더 경로 추출 (파일명 제외)
+        String folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+        log.info("PDF 폴더 경로: {}", folderPath);
 
         Document document = Document.builder()
             .teacher(teacher)
@@ -128,111 +138,119 @@ public class DocumentProcessService {
     public void processPage(Document document, int pageNumber, String rawContent) {
         try {
             log.info("페이지 처리 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-
-            Optional<Page> existingPage = pageRepository.findByDocumentAndPageNumber(document, pageNumber);
-            if (existingPage.isPresent() &&
-                existingPage.get().getProcessingStatus() == DocumentProcessStatus.COMPLETED) {
-                log.info("페이지가 이미 처리되었습니다: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-                return;
-            }
-
-            // 1. DeepL 번역 수행
-            // String translatedContent = deepLTranslatorService.translateText(rawContent);
-            // 2. OpenAI 번역 수행
-            String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent, document.getGrade());
-
-            // 2. 번역된 텍스트로 AI Block 처리
-            AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
-            String processedContentStr = blockAnalysisResult.getOriginalContent();
-            com.fasterxml.jackson.databind.JsonNode processedContent;
+            
+            // 파일 경로에서 폴더 경로 추출 (파일명 제외)
+            String filePath = document.getFilePath();
+            String folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+            
+            // ThreadLocal에 문서 정보 설정
+            DocumentProcessHolder.setDocumentId(document.getId());
+            DocumentProcessHolder.setPdfName(document.getOriginalFilename());
+            DocumentProcessHolder.setTeacherId(document.getTeacher().getId().toString());
+            DocumentProcessHolder.setPdfFolderPath(folderPath);
+            
             try {
-                processedContent = objectMapper.readTree(processedContentStr);
-            } catch (Exception e) {
-                log.error("JSON 변환 중 오류 발생", e);
-                throw new RuntimeException("처리된 콘텐츠를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
-            }
+                Optional<Page> existingPage = pageRepository.findByDocumentAndPageNumber(document, pageNumber);
+                if (existingPage.isPresent() &&
+                    existingPage.get().getProcessingStatus() == DocumentProcessStatus.COMPLETED) {
+                    log.info("페이지가 이미 처리되었습니다: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
+                    return;
+                }
 
-            log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
-            log.info("블럭 한개: {}", blockAnalysisResult.getBlocks().get(0));
-            List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
-                .filter(block -> block.getType() != null && block.getType().name().equals("TEXT"))
-                .map(block -> (TextBlock) block)
-                .toList();
+                // 1. OpenAI 번역 수행
+                String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent, Grade.GRADE_3);
 
-            log.info("textBlock 개수: {}", textBlocks.size());
+                // 2. 번역된 텍스트로 AI Block 처리
+                AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
 
-            textBlocks.parallelStream()
-                .forEach(textBlock -> analyzeAndSaveVocabularyAsync(textBlock, document.getId(), pageNumber));
+                // blocks를 JSON 문자열로 변환
+                String processedContentStr;
+                try {
+                    processedContentStr = objectMapper.writeValueAsString(blockAnalysisResult.getBlocks());
+                    log.info("변환된 블록 JSON: {}", processedContentStr);
+                } catch (Exception e) {
+                    log.error("블록을 JSON으로 변환 중 오류 발생", e);
+                    throw new RuntimeException("블록을 JSON으로 변환하는 중 오류가 발생했습니다.", e);
+                }
 
-            // 3. 메타데이터 추출 (번역된 텍스트 기반)
-            String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
-            Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
-            Integer wordCount = aiPromptService.countWords(translatedContent);
-            Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
+                com.fasterxml.jackson.databind.JsonNode processedContent;
+                try {
+                    processedContent = objectMapper.readTree(processedContentStr);
+                } catch (Exception e) {
+                    log.error("JSON 변환 중 오류 발생", e);
+                    throw new RuntimeException("처리된 콘텐츠를 JSON으로 변환하는 중 오류가 발생했습니다.", e);
+                }
 
-            Page page;
-            if (existingPage.isPresent()) {
-                page = existingPage.get();
-                page.setProcessingStatus(DocumentProcessStatus.PROCESSING);
+                log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
+                List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
+                    .filter(block -> block instanceof TextBlock textBlock && 
+                            block.getType() != null && 
+                            block.getType().name().equals("TEXT"))
+                    .map(block -> (TextBlock) block)
+                    .toList();
+
+                log.info("textBlock 개수: {}", textBlocks.size());
+
+                textBlocks.parallelStream()
+                    .forEach(textBlock -> analyzeAndSaveVocabularyAsync(textBlock, document.getId(), pageNumber));
+
+                // 3. 메타데이터 추출 (번역된 텍스트 기반)
+                String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
+                Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
+                Integer wordCount = aiPromptService.countWords(translatedContent);
+                Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
+
+                Page page;
+                if (existingPage.isPresent()) {
+                    page = existingPage.get();
+                    page.setProcessingStatus(DocumentProcessStatus.PROCESSING);
+                    pageRepository.save(page);
+                } else {
+                    page = Page.builder()
+                        .document(document)
+                        .pageNumber(pageNumber)
+                        .originalContent(rawContent)
+                        .processedContent(processedContent)
+                        .sectionTitle(sectionTitle)
+                        .readingLevel(readingLevel)
+                        .wordCount(wordCount)
+                        .complexityScore(complexityScore)
+                        .processingStatus(DocumentProcessStatus.PROCESSING)
+                        .build();
+
+                    page = pageRepository.save(page);
+                }
+
+                if (existingPage.isPresent()) {
+                    pageTipRepository.deleteAll(pageTipRepository.findByPageId(page.getId()));
+                    pageImageRepository.deleteAll(pageImageRepository.findByPageId(page.getId()));
+                }
+
+                log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
+                List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(translatedContent, document.getGrade());
+                for (AIPromptService.TermInfo termInfo : terms) {
+                    PageTip pageTip = PageTip.builder()
+                        .page(page)
+                        .term(termInfo.getTerm())
+                        .simplifiedExplanation(termInfo.getExplanation())
+                        .termPosition(termInfo.getPositionJson())
+                        .termType(termInfo.getTermType())
+                        .visualAidNeeded(termInfo.isVisualAidNeeded())
+                        .readAloudText(termInfo.getReadAloudText())
+                        .build();
+
+                    pageTipRepository.save(pageTip);
+                }
+                log.info("용어 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", terms.size(), document.getId(), pageNumber);
+
+                page.setProcessingStatus(DocumentProcessStatus.COMPLETED);
                 pageRepository.save(page);
-            } else {
-                page = Page.builder()
-                    .document(document)
-                    .pageNumber(pageNumber)
-                    .originalContent(rawContent)
-                    .processedContent(processedContent)
-                    .sectionTitle(sectionTitle)
-                    .readingLevel(readingLevel)
-                    .wordCount(wordCount)
-                    .complexityScore(complexityScore)
-                    .processingStatus(DocumentProcessStatus.PROCESSING)
-                    .build();
 
-                page = pageRepository.save(page);
+                log.info("페이지 처리 완료: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
+            } finally {
+                // ThreadLocal 정리
+                DocumentProcessHolder.clear();
             }
-
-            if (existingPage.isPresent()) {
-                pageTipRepository.deleteAll(pageTipRepository.findByPageId(page.getId()));
-                pageImageRepository.deleteAll(pageImageRepository.findByPageId(page.getId()));
-            }
-
-            log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-            List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(translatedContent, document.getGrade());
-            for (AIPromptService.TermInfo termInfo : terms) {
-                PageTip pageTip = PageTip.builder()
-                    .page(page)
-                    .term(termInfo.getTerm())
-                    .simplifiedExplanation(termInfo.getExplanation())
-                    .termPosition(termInfo.getPositionJson())
-                    .termType(termInfo.getTermType())
-                    .visualAidNeeded(termInfo.isVisualAidNeeded())
-                    .readAloudText(termInfo.getReadAloudText())
-                    .build();
-
-                pageTipRepository.save(pageTip);
-            }
-            log.info("용어 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", terms.size(), document.getId(), pageNumber);
-
-            log.info("이미지 생성 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
-            List<AIPromptService.ImageInfo> images = aiPromptService.extractOrGenerateImages(translatedContent, terms);
-            for (AIPromptService.ImageInfo imageInfo : images) {
-                PageImage pageImage = PageImage.builder()
-                    .page(page)
-                    .imageUrl(imageInfo.getImageUrl())
-                    .imageType(imageInfo.getImageType())
-                    .conceptReference(imageInfo.getConceptReference())
-                    .altText(imageInfo.getAltText())
-                    .positionInPage(imageInfo.getPositionJson())
-                    .build();
-
-                pageImageRepository.save(pageImage);
-            }
-            log.info("이미지 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", images.size(), document.getId(), pageNumber);
-
-            page.setProcessingStatus(DocumentProcessStatus.COMPLETED);
-            pageRepository.save(page);
-
-            log.info("페이지 처리 완료: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
 
         } catch (Exception e) {
             log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber, e);
@@ -243,6 +261,9 @@ public class DocumentProcessService {
                 pageRepository.save(page.get());
                 log.error("페이지 ID: {}의 상태를 FAILED로 변경했습니다.", page.get().getId());
             }
+            
+            // 오류 발생 시에도 ThreadLocal 반드시 정리
+            DocumentProcessHolder.clear();
         }
     }
 
