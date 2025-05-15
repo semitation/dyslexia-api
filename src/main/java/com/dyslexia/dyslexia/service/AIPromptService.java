@@ -360,9 +360,13 @@ public class AIPromptService {
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
             systemMessage.put("content", "당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, " +
-                    "설명하는 이미지를 생성하는 전문가입니다. 반드시 아래 JSON 배열 형식으로만 응답해 주세요:\n" +
-                    "[{\"description\": \"생성할 이미지의 설명\", \"imageType\": \"CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION\", " +
-                    "\"conceptReference\": \"관련 개념\", \"altText\": \"이미지 대체 텍스트\", \"position\": {\"page\": 페이지번호}}]");
+                "설명하는 이미지를 생성하는 전문가입니다. 생성하는 이미지 설명에서는 다음 규칙을 반드시 지켜주세요:\n" +
+                "1. 고유명사나 캐릭터 이름은 일반적인 용어로 대체하세요 (예: '앨리스' → '소녀', '에스콰이어' → '호칭')\n" +
+                "2. 문맥을 모르면 이해하기 어려운 용어는 설명을 추가하세요\n" +
+                "3. 초등학생이 이해할 수 있는 보편적인 개념과 표현만 사용하세요\n\n" +
+                "반드시 아래 JSON 배열 형식으로만 응답해 주세요:\n" +
+                "[{\"description\": \"생성할 이미지의 설명\", \"imageType\": \"CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION\", " +
+                "\"conceptReference\": \"관련 개념\", \"altText\": \"이미지 대체 텍스트\", \"position\": {\"page\": 페이지번호}}]");
             messages.add(systemMessage);
 
             StringBuilder promptBuilder = new StringBuilder();
@@ -465,12 +469,6 @@ public class AIPromptService {
             // 프롬프트 구성
             String prompt = "교육용 이미지: " + description +
                 "\n\n지시사항:" +
-                "\n- 초등학생이 뜻을 이해할 수 있는 이미지를 매우 간단하고 명확하게 표현해주세요" +
-                "\n- 밝고 선명한 색상과 굵고 명확한 윤곽선을 사용해주세요" +
-                "\n- 단순하고 깔끔한 레이아웃으로 정보를 효과적으로 전달해주세요" +
-                "\n- 적절한 크기의 글자와 레이블로 핵심 정보를 표시해주세요" +
-                "\n- 명확한 시각적 계층 구조로 중요한 정보를 강조해주세요" +
-                "\n- 흰색 배경에 주요 정보만 집중해서 보여주세요" +
                 "\n- 복잡한 배경이나 불필요한 요소는 제거해주세요" +
                 "\n- 텍스트는 한글을 사용해주세요";
 
@@ -483,7 +481,7 @@ public class AIPromptService {
                 "any"                                      // 스타일 자동 선택
             };
             
-            String selectedStyle = "digital_illustration/infantile_sketch";
+            String selectedStyle = "realistic_image";
             
             // Replicate API 요청 바디 생성
             Map<String, Object> input = new HashMap<>();
