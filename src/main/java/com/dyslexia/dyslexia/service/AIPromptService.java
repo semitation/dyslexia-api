@@ -407,19 +407,10 @@ public class AIPromptService {
     log.info("OpenAI 번역 시작: 텍스트 길이: {}", text.length());
     try {
 
-      String systemPrompt = """
-        영문 텍스트를 **한국인이라면 누구나** 자연스럽게 읽을 수 있도록 한국어로 번역하세요.
-        아래 내용은 꼭 **엄격하게** 지켜야 합니다:
-        - 맥락과 분위기를 살려서 *원문의 의미가 담긴 의역**
-        - 문맥을 자연스럽게 유지해야 함
-        - 어휘 수준은 **초등 %s 수준**이어야 함
-        - 인물이 나왔다면 **인물의 성격을 이해하고 성격을 반영**해야 함
-        - 숫자는 **아라비아 숫자 그대로 표현**해야 함
-        - 비유적인 표현은 **한국의 비유 표현으로 번역**해야 함
-        - **대명사는 직관적으로 이해할 수 있도록 번역**해야 함
-        이제 다음 텍스트를 번역해주세요:
-        """.formatted(grade.getLabel());
-      
+      String systemPrompt = new PromptBuilder()
+          .add(PromptBuilder.TRANSLATE_SYSTEM_PROMPT, Map.of("grade", grade.getLabel()))
+          .build();
+
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
           .temperature(1.0)
