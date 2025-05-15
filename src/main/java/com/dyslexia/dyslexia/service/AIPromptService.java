@@ -214,7 +214,7 @@ public class AIPromptService {
           제목을 생성하는 기준: 제목이 명시적으로 존재하지 않거나 여러 주제를 포함함
           제목일 가능성이 높은 기준: 문서의 가장 앞에 위치하며, 다른 문장에 비해 짧고 간결함
           생성 시 결과: 전체 내용을 요약한 핵심 주제 기반
-          최종 결과: 20자 이내의 내용을 포괄적으로 이해할 수 있는 문맥상 자연스러운 제목
+          최종 결과:  불필요한 특수 문자 없이 20자 이내의 내용을 포괄적으로 이해할 수 있는 문맥상 자연스러운 제목
           
           """
           + (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent);
@@ -228,7 +228,6 @@ public class AIPromptService {
 
       Map<String, Object> response = requestToApi(requestBody);
       String title = extractMessageContent(response).trim();
-      title = title.replaceAll("^\"|\"$|^'|'$|\\.$", "");
 
       log.info("섹션 제목 추출 완료: {}", title);
       return title;
@@ -618,10 +617,14 @@ public class AIPromptService {
     }
   }
 
-  public String translateTextWithOpenAI(String text) {
+  public String translateTextWithOpenAI(String text, Grade grade) {
     log.info("OpenAI 번역 시작: 텍스트 길이: {}", text.length());
     try {
-      String systemPrompt = "영어 텍스트를 한국어로 자연스럽게 번역하세요. 번역 결과만 반환하세요. 설명, 마크다운, 코드블록 없이 번역문만 출력하세요.";
+
+      String systemPrompt = new PromptBuilder()
+          .add(PromptBuilder.TRANSLATE_SYSTEM_PROMPT, Map.of("grade", grade.getLabel()))
+          .build();
+
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)

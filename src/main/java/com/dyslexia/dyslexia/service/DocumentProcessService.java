@@ -158,7 +158,7 @@ public class DocumentProcessService {
                 }
 
                 // 1. OpenAI 번역 수행
-                String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent);
+                String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent, Grade.GRADE_3);
 
                 // 2. 번역된 텍스트로 AI Block 처리
                 AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
