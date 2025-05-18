@@ -460,13 +460,12 @@ public class DocumentProcessService {
                 String basicAnalysisJson = vocabularyAnalysisPromptService.analyzeVocabularyBasic(textBlock.getText(), 3);
                 List<Map<String, Object>> basicAnalysisList = objectMapper.readValue(basicAnalysisJson, List.class);
                 
-                // 2. 각 단어에 대해 음소 분석 수행
-                List<VocabularyAnalysis> entities = new ArrayList<>();
+                // 2. 각 단어에 대해 음소 분석 수행 및 저장
                 for (Map<String, Object> basicAnalysis : basicAnalysisList) {
                     String word = (String) basicAnalysis.get("word");
                     String phonemeAnalysisJson = vocabularyAnalysisPromptService.analyzePhonemeAnalysis(word);
                     
-                    // 3. 엔티티 생성 (아직 저장하지 않음)
+                    // 3. 기본 분석과 음소 분석 결과를 결합하여 저장
                     VocabularyAnalysis entity = VocabularyAnalysis.builder()
                         .documentId(documentId)
                         .pageNumber(pageNumber)
@@ -483,26 +482,13 @@ public class DocumentProcessService {
                         .phonemeAnalysisJson(phonemeAnalysisJson)
                         .createdAt(java.time.LocalDateTime.now())
                         .build();
-                    
-                    entities.add(entity);
+                    vocabularyAnalysisRepository.save(entity);
+                    log.info("어휘 분석 저장 완료: word={}, documentId={}, pageNumber={}", word, documentId, pageNumber);
                 }
-                
-                // 4. 트랜잭션 내에서 일괄 저장
-                saveVocabularyAnalysisInBatch(entities);
-                
             } catch (Exception e) {
-                log.error("어휘 분석 중 오류 발생 - Block ID: {}, Document ID: {}, Page: {}", 
-                    textBlock.getId(), documentId, pageNumber, e);
+                log.error("어휘 분석 및 저장 실패: blockId={}, pageNumber={}", textBlock.getId(), pageNumber, e);
             }
         }, taskExecutor);
-    }
-
-    /**
-     * 어휘 분석 결과를 일괄 저장하는 메서드
-     */
-    @Transactional
-    public void saveVocabularyAnalysisInBatch(List<VocabularyAnalysis> entities) {
-        vocabularyAnalysisRepository.saveAll(entities);
     }
 
 } 
