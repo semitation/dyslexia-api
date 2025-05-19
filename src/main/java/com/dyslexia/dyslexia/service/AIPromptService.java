@@ -108,7 +108,10 @@ public class AIPromptService {
           .add(PromptBuilder.BLOCK_SYSTEM_PROMPT, Map.of("grade", grade.name()))
           .build();
 
-      String userPrompt = "다음 교육 자료를 Block 구조(JSON)로 변환해 주세요: \n\n" + rawContent;
+      String userPrompt = """
+      Convert the following educational material into a Block structure (JSON):
+      
+      """ + rawContent;
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
@@ -208,16 +211,10 @@ public class AIPromptService {
     log.info("섹션 제목 추출 시작");
 
     try {
-      String userPrompt = 
-          """
-          다음 텍스트에서 섹션의 제목을 추출하거나 제목을 생성하려고 합니다.
-          제목을 생성하는 기준: 제목이 명시적으로 존재하지 않거나 여러 주제를 포함함
-          제목일 가능성이 높은 기준: 문서의 가장 앞에 위치하며, 다른 문장에 비해 짧고 간결함
-          생성 시 결과: 전체 내용을 요약한 핵심 주제 기반
-          최종 결과:  불필요한 특수 문자 없이 20자 이내의 내용을 포괄적으로 이해할 수 있는 문맥상 자연스러운 제목
-          
-          """
-          + (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent);
+      String userPrompt = """
+      Now, Extract or generate a title from the following text.:
+      
+      """ + (rawContent.length() > 1000 ? rawContent.substring(0, 1000) : rawContent);
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
@@ -242,8 +239,7 @@ public class AIPromptService {
     log.info("읽기 난이도 계산 시작");
 
     try {
-      String userPrompt = "다음 텍스트의 읽기 난이도를 분석하여 1(매우 쉬움)부터 10(매우 어려움)까지의 숫자로만 응답하세요.: \n\n" +
-                          (content.length() > 1000 ? content.substring(0, 1000) : content);
+      String userPrompt = (content.length() > 1000 ? content.substring(0, 1000) : content);
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
@@ -292,7 +288,10 @@ public class AIPromptService {
           .add(PromptBuilder.TERM_EXTRACT_SYSTEM_PROMPT, Map.of("grade", grade.name()))
           .build();
 
-      String userPrompt = "다음 교육 자료에서 어려운 용어를 찾고 설명해 주세요: \n\n" + content;
+      String userPrompt = """
+          Identify and explain difficult terms in the following educational material:
+          
+          """ + content;
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
@@ -457,10 +456,14 @@ public class AIPromptService {
 
   private String generateImageWithReplicate(String description) {
     try {
-      String prompt = "교육용 이미지: " + description +
-          "\n\n지시사항:" +
-          "\n- 복잡한 배경이나 불필요한 요소는 제거해주세요" +
-                "\n- 텍스트는 한글을 사용해주세요";
+      String prompt = """
+          교육용 이미지: %s
+          지시사항:
+          - 복잡한 배경이나 불필요한 요소는 제거해주세요.
+          - 텍스트는 한글을 사용해주세요.
+          """.formatted(description);
+
+      log.info(prompt);
 
       String selectedStyle = "realistic_image";
       
@@ -622,9 +625,8 @@ public class AIPromptService {
     try {
 
       String systemPrompt = new PromptBuilder()
-          .add(PromptBuilder.TRANSLATE_SYSTEM_PROMPT, Map.of("grade", grade.getLabel()))
+          .add(PromptBuilder.TRANSLATE_SYSTEM_PROMPT, Map.of("grade", grade.ordinal() + 1))
           .build();
-
 
       Map<String, Object> requestBody = new ChatRequestBuilder()
           .model(MODEL)
