@@ -438,7 +438,7 @@ public class AIPromptService {
 //                    if (!localFilePath.isEmpty()) {
 //                        imageUrl = localFilePath; // imageUrl 변수를 로컬 경로로 업데이트
 //                    }
-//
+
                     images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
                 }
                 
@@ -459,13 +459,14 @@ public class AIPromptService {
       String prompt = """
           교육용 이미지: %s
           지시사항:
+          - 동화같은 그림체로 그려주세요.
           - 복잡한 배경이나 불필요한 요소는 제거해주세요.
-          - 텍스트는 한글을 사용해주세요.
+          - 문자는 들어가지 않도록 해주세요.
           """.formatted(description);
 
       log.info(prompt);
 
-      String selectedStyle = "realistic_image";
+      String selectedStyle = "any";
       
       Map<String, Object> input = new HashMap<>();
       input.put("prompt", prompt);
@@ -473,7 +474,7 @@ public class AIPromptService {
       input.put("size", "1024x1024");
       
       Map<String, Object> requestBody = new HashMap<>();
-      requestBody.put("version", "recraft-ai/recraft-v3");
+      requestBody.put("version", "recraft-ai/recraft-v3-svg");
       requestBody.put("input", input);
       
       String jsonBody = objectMapper.writeValueAsString(requestBody);
