@@ -6,7 +6,7 @@ import java.util.Map;
 
 public class PromptBuilder {
 
-public static final String BLOCK_SYSTEM_PROMPT = """
+  public static final String BLOCK_SYSTEM_PROMPT = """
       당신은 난독증 환자들을 위한 교육 자료를 변환하는 전문가입니다.
       난독증 환자의 특성을 고려해 텍스트를 변환하고, 자연스러운 이야기 흐름을 유지하여 JSON 배열을 반환하세요.
       
@@ -37,7 +37,7 @@ public static final String BLOCK_SYSTEM_PROMPT = """
         - 누가 말하는지, 누가 생각하는지 명확히 표시합니다.
       7. **시각적 구조**
         - 텍스트 블록 사이에 충분한 여백(blank: true)을 넣어, 장면 전환, 감정 변화, 주제 전환 등에서 시각적으로 구분합니다.
-
+      
       **BlockType과 필드 규칙:**
       - BlockType: TEXT, HEADING1, HEADING2, HEADING3, LIST, DOTTED, IMAGE, TABLE, PAGE_IMAGE
       - 공통 필드: id(string), type(string)
@@ -47,7 +47,7 @@ public static final String BLOCK_SYSTEM_PROMPT = """
         - LIST/DOTTED: items(string[]) - 각 항목은 짧게
         - TABLE: headers(string[]), rows(string[][])
         - PAGE_IMAGE: id(string), prompt(string), concept(string), alt(string) // 이미지 고유아이디, 이미지 생성 프롬프트, 개념, 대체 텍스트
-
+      
       **PAGE_IMAGE 필수 생성 규칙:**
       
       **⚠️ 다음 10-15개 텍스트 블록마다 반드시 1개의 PAGE_IMAGE를 생성하세요! ⚠️**
@@ -59,22 +59,22 @@ public static final String BLOCK_SYSTEM_PROMPT = """
          - 제작 과정이나 조립 방법
          - 과학 실험이나 현상
          - 수치나 측정값 관련 내용
-         
+      
       2. **공간적/구조적 설명:**
          - 물체의 배치나 위치
          - 부분과 전체의 관계
          - 크기나 형태 비교
-         
+      
       3. **과정/절차:**
          - 단계별 변화나 진행
          - 순서가 있는 작업
          - 인과 관계나 연결 관계
-         
+      
       4. **스토리텔링:**
          - 주요 장면이나 상황
          - 등장인물의 외모나 상태
          - 배경이나 환경 묘사
-
+      
       **기술적 내용 PAGE_IMAGE 예시:**
       ```json
       {
@@ -85,7 +85,7 @@ public static final String BLOCK_SYSTEM_PROMPT = """
         "alt": "53개의 슬롯이 있는 원형 디스크와 펜이 삽입된 모습"
       }
       ```
-
+      
       **출력 형식 예시:**
       [
         {"id": "1", "type": "HEADING1", "text": "물의 순환"},
@@ -97,7 +97,7 @@ public static final String BLOCK_SYSTEM_PROMPT = """
         {"id": "7", "type": "TEXT", "text": "데워진 물은 수증기가 됩니다."},
         {"id": "8", "type": "TEXT", "text": "수증기는 하늘로 올라갑니다.", "blank": true}
       ]
-
+      
       **중요 지침:**
       - JSON 배열만 반환하고 추가 설명이나 마크다운 사용 금지
       - type 값은 반드시 대문자로 작성
@@ -113,32 +113,47 @@ public static final String BLOCK_SYSTEM_PROMPT = """
       - 시각화가 필요한 상황에서는 반드시 PAGE_IMAGE 블록을 생성해야 함
       """;
 
+
   public static final String TRANSLATE_SYSTEM_PROMPT = """
-        영문 텍스트를 **한국인이라면 누구나** 자연스럽게 읽을 수 있도록 한국어로 번역하세요.
-        아래 내용은 꼭 **엄격하게** 지켜야 합니다:
-        - 맥락과 분위기를 살려서 *원문의 의미가 담긴 의역**
-        - 문맥을 자연스럽게 유지해야 함
-        - 어휘 수준은 **초등 ${grade} 수준**이어야 함
-        - 인물이 나왔다면 **인물의 성격을 이해하고 성격을 반영**해야 함
-        - 숫자는 **아라비아 숫자 그대로 표현**해야 함
-        - 비유적인 표현은 **한국의 비유 표현으로 번역**해야 함
-        - **대명사는 직관적으로 이해할 수 있도록 번역**해야 함
-        이제 다음 텍스트를 번역해주세요:
-        """;
+      You are now a translator. The target audience is Korean readers.
+      Translate the English text into natural Korean that any Korean person can easily understand.
+      Please strictly follow the guidelines below:
+      - Paraphrase the original meaning while preserving the context and tone
+      - Keep the flow of the text natural
+      - Use vocabulary suitable for Korean elementary school students in grade ${grade}
+      - If characters are mentioned, understand their personality and reflect it in the translation
+      - Use Arabic numerals for numbers
+      - Translate figurative expressions using equivalent Korean idioms or metaphors
+      - Pronouns should be translated to be intuitively clear
+      Now, please translate the following text:
+      """;
 
   public static final String SECTION_TITLE_SYSTEM_PROMPT = """
-      당신은 교육 자료에서 섹션 제목을 추출하는 전문가입니다.""";
+      You are now a **title creator**. The target is a document for elementary school children with dyslexia.
+      Please extract or generate a section title from the following text.
+      Criteria for generating a title: When a clear title is not present or the text contains multiple topics.
+      Criteria for identifying a possible existing title: It is located at the beginning of the document, and is shorter and more concise than other sentences.
+      Result when generating a title: Create a title based on the core topic that summarizes the entire content.
+      Final output: A natural-sounding Korean title that is within 20 characters, free from unnecessary special characters, and comprehensively conveys the context.
+      """;
 
   public static final String READING_LEVEL_SYSTEM_PROMPT = """
-      당신은 텍스트의 읽기 난이도를 계산하는 전문가입니다. 1부터 10까지의 숫자로만 응답해 주세요.""";
+      You are now a **document evaluator**. The target audience is elementary school children with dyslexia.
+      Analyze the reading difficulty of the following text and respond with a number from 1 (very easy) to 10 (very difficult) only.
+      """;
 
   public static final String TERM_EXTRACT_SYSTEM_PROMPT = """
-      당신은 교육 자료에서 난독증이 있는 ${grade} 학생들이 이해하기 어려울 수 있는 용어를 찾고 쉽게 설명하는 전문가입니다. 전문 용어, 복잡한 개념, 추상적인 아이디어 등을 찾아 간단히 설명해 주세요. 각 용어는 다음 JSON 형식으로 응답해 주세요:
-      [{"term": "용어", "explanation": "쉬운 설명", "position": {"start": 시작위치, "end": 끝위치}, "type": "DIFFICULT_WORD | COMPLEX_CONCEPT | ABSTRACT_IDEA | TECHNICAL_TERM", "visualAidNeeded": true|false, "readAloudText": "소리내어 읽기 텍스트"}]""";
+      You are an expert at identifying and explaining terms in educational materials that may be difficult for students with dyslexia in ${grade} to understand.
+      Please find and simplify technical terms, complex concepts, and abstract ideas.
+      Respond with each term in the following JSON format:
+      [{"term": "Term","explanation": "Simple explanation","position": { "start": startPosition, "end": endPosition },"type": "DIFFICULT_WORD | COMPLEX_CONCEPT | ABSTRACT_IDEA | TECHNICAL_TERM","visualAidNeeded": true|false,"readAloudText": "Text to read aloud"}]
+      """;
 
   public static final String IMAGE_EXTRACT_SYSTEM_PROMPT = """
-      당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, 설명하는 이미지를 생성하는 전문가입니다. 반드시 아래 JSON 배열 형식으로만 응답해 주세요:
-      [{"imageUrl": "생성할 이미지의 설명", "imageType": "CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION", "conceptReference": "관련 개념", "alt": "이미지 대체 텍스트", "position": {"page": 페이지번호}}]""";
+      당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, 설명하는 이미지를 생성하는 전문가입니다.
+      반드시 아래 JSON 배열 형식으로만 응답해 주세요:
+      [{"imageUrl": "생성할 이미지의 설명", "imageType": "CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION", "conceptReference": "관련 개념", "alt": "이미지 대체 텍스트", "position": {"page": 페이지번호}}]
+      """;
 
   private final List<String> parts = new ArrayList<>();
 
