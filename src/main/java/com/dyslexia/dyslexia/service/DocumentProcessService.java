@@ -63,11 +63,11 @@ public class DocumentProcessService {
     private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
     private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
 
-    // 스레드 풀 크기 설정 추가
-    private static final int MAX_CONCURRENT_PAGES = 4;
-    // 스레드 풀 추가 (어휘 분석 전용)
-    private final ExecutorService vocabularyAnalysisExecutor = Executors.newFixedThreadPool(12);
-    private static final int TEXT_BLOCK_PARALLELISM = 4;
+    // 스레드 풀 (문서 처리 전용)
+    private static final int MAX_CONCURRENT_PAGES = 16;
+    // 스레드 풀 (어휘 분석 전용)
+    private final ExecutorService vocabularyAnalysisExecutor = 
+        Executors.newFixedThreadPool(Math.min(Runtime.getRuntime().availableProcessors() * 2, 32));  // 최대 32개로 제한
 
 
     @Transactional
@@ -183,7 +183,7 @@ public class DocumentProcessService {
                 
                 try {
                     // 타임아웃 설정 (전체 문서 처리 제한 시간)
-                    allPagesFuture.get(1, TimeUnit.HOURS);
+                    allPagesFuture.get(3, TimeUnit.HOURS);
                     
                     // 모든 페이지 처리 성공 시 문서 상태 업데이트
                     document.setProcessStatus(DocumentProcessStatus.COMPLETED);
@@ -298,16 +298,17 @@ public class DocumentProcessService {
                 // 2. 번역된 텍스트로 AI Block 처리
                 AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
 
-                // blocks를 JSON 문자열로 변환
+                // 3-1. blocks를 JSON 문자열로 변환
                 String processedContentStr;
                 try {
                     processedContentStr = objectMapper.writeValueAsString(blockAnalysisResult.getBlocks());
-                    log.info("변환된 블록 JSON: {}", processedContentStr);
+                    // log.info("변환된 블록 JSON: {}", processedContentStr);
                 } catch (Exception e) {
                     log.error("블록을 JSON으로 변환 중 오류 발생", e);
                     throw new RuntimeException("블록을 JSON으로 변환하는 중 오류가 발생했습니다.", e);
                 }
 
+                // 3-2. blocks를 JSON Tree형식으로 변환
                 com.fasterxml.jackson.databind.JsonNode processedContent;
                 try {
                     processedContent = objectMapper.readTree(processedContentStr);
@@ -317,6 +318,8 @@ public class DocumentProcessService {
                 }
 
                 log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
+
+                // 3-3. 텍스트 블록만 추출
                 List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
                     .filter(block -> block instanceof TextBlock textBlock && 
                             block.getType() != null && 
@@ -326,10 +329,11 @@ public class DocumentProcessService {
 
                 log.info("textBlock 개수: {}", textBlocks.size());
 
-                // 텍스트 블록을 배치로 나누어 일괄 처리
-                List<List<TextBlock>> batches = createBatches(textBlocks, 10); // 10개씩 배치
+                // 3-4. 텍스트 블록을 배치로 변환
+                // List<Batch>: TextBlock 10개씩 묶음
+                List<List<TextBlock>> batches = createBatches(textBlocks, 10);
                 
-                // 각 배치를 별도 스레드에서 비동기 처리
+                // 3-5. 각 배치를 별도 스레드에서 비동기 처리
                 List<CompletableFuture<List<VocabularyAnalysis>>> batchFutures = new ArrayList<>();
                 
                 for (List<TextBlock> batch : batches) {
@@ -340,12 +344,12 @@ public class DocumentProcessService {
                     batchFutures.add(future);
                 }
                 
-                // 모든 배치 처리 완료 대기
+                // 3-6. 모든 배치 처리 완료 대기
                 CompletableFuture<Void> allBatchesProcessed = CompletableFuture.allOf(
                     batchFutures.toArray(new CompletableFuture[0])
                 );
                 
-                // 결과 수집 및 저장
+                // 3-7. 결과 수집 및 저장
                 List<VocabularyAnalysis> allEntities = new ArrayList<>();
                 try {
                     allEntities = allBatchesProcessed
@@ -353,7 +357,7 @@ public class DocumentProcessService {
                             .map(CompletableFuture::join)
                             .flatMap(List::stream)
                             .collect(Collectors.toList())
-                        ).get(10, TimeUnit.MINUTES); // 타임아웃 설정
+                        ).get(60, TimeUnit.MINUTES); // 타임아웃 설정
                     
                     // 모든 결과 일괄 저장
                     if (!allEntities.isEmpty()) {
@@ -366,12 +370,13 @@ public class DocumentProcessService {
                         document.getId(), pageNumber, e);
                 }
 
-                // 3. 메타데이터 추출 (번역된 텍스트 기반)
+                // 4. 메타데이터 추출 (번역된 텍스트 기반)
                 String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
                 Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
                 Integer wordCount = aiPromptService.countWords(translatedContent);
                 Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
 
+                // 5. 페이지 엔티티 생성 및 저장
                 Page page;
                 if (existingPage.isPresent()) {
                     page = existingPage.get();
@@ -393,11 +398,13 @@ public class DocumentProcessService {
                     page = pageRepository.save(page);
                 }
 
+                // 페이지 데이터 초기화
                 if (existingPage.isPresent()) {
                     pageTipRepository.deleteAll(pageTipRepository.findByPageId(page.getId()));
                     pageImageRepository.deleteAll(pageImageRepository.findByPageId(page.getId()));
                 }
 
+                // 7. 페이지 팁 추출
                 log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
                 List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(translatedContent, document.getGrade());
                 for (AIPromptService.TermInfo termInfo : terms) {
@@ -440,61 +447,6 @@ public class DocumentProcessService {
     }
 
     /*
-    * 배치 처리 메서드
-    * Block의 content에 대해 어휘 분석을 수행하고, 결과를 VocalbularyAnalysis 엔티티로 변환하여 저장
-    */ 
-    private void analyzeVocabularyBatch(List<TextBlock> batch, Long documentId, int pageNumber) {
-        List<VocabularyAnalysis> entities = new ArrayList<>();
-        for (TextBlock textBlock : batch) {
-            try {
-                // 1. 기본 어휘 분석
-                String basicAnalysisJson = vocabularyAnalysisPromptService.analyzeVocabularyBasic(textBlock.getText(), 3);
-                List<Map<String, Object>> basicAnalysisList = objectMapper.readValue(basicAnalysisJson, List.class);
-                
-                // 2. 음소 분석 수행 및 저장
-                for (Map<String, Object> basicAnalysis : basicAnalysisList) {
-                    String word = (String) basicAnalysis.get("word");
-                    String phonemeAnalysisJson = vocabularyAnalysisPromptService.analyzePhonemeAnalysis(word);
-                    
-                    try {
-                        // 3. 어휘 분석, 음소 분석 결과를 결합하여 저장
-                        VocabularyAnalysis entity = VocabularyAnalysis.builder()
-                            .documentId(documentId)
-                            .pageNumber(pageNumber)
-                            .blockId(textBlock.getId())
-                            .word(word)
-                            .startIndex((Integer) basicAnalysis.getOrDefault("startIndex", null))
-                            .endIndex((Integer) basicAnalysis.getOrDefault("endIndex", null))
-                            .definition((String) basicAnalysis.getOrDefault("definition", null))
-                            .simplifiedDefinition((String) basicAnalysis.getOrDefault("simplifiedDefinition", null))
-                            .examples(basicAnalysis.get("examples") != null ? 
-                                     objectMapper.writeValueAsString(basicAnalysis.get("examples")) : null)
-                            .difficultyLevel((String) basicAnalysis.getOrDefault("difficultyLevel", null))
-                            .reason((String) basicAnalysis.getOrDefault("reason", null))
-                            .gradeLevel(basicAnalysis.get("gradeLevel") != null ? 
-                                      (Integer) basicAnalysis.get("gradeLevel") : null)
-                            .phonemeAnalysisJson(phonemeAnalysisJson)
-                            .createdAt(java.time.LocalDateTime.now())
-                            .build();
-                        entities.add(entity);
-                    } catch (JsonProcessingException e) {
-                        log.error("JSON 처리 중 오류 발생 - 단어: {}, 문서 ID: {}, 페이지: {}", 
-                                 word, documentId, pageNumber, e);
-                    }
-                }
-            } catch (Exception e) {
-                log.error("텍스트 블록 분석 중 오류 발생 - Block ID: {}, 문서 ID: {}, 페이지: {}", 
-                         textBlock.getId(), documentId, pageNumber, e);
-            }
-        }
-        
-        if (!entities.isEmpty()) {
-            // 배치 내 모든 엔티티 한 번에 저장
-            saveVocabularyAnalysisInBatch(entities);
-        }
-    }
-
-    /**
      * 개선된 배치 처리 메서드
      * 여러 텍스트 블록을 배치로 처리하고 음운 분석을 한 번에 수행
      */
@@ -508,19 +460,19 @@ public class DocumentProcessService {
             log.info("배치 처리 시작 [스레드: {}]: 문서 ID: {}, 페이지: {}, 블록 수: {}", 
                 threadName, documentId, pageNumber, batch.size());
             
-            // 1. 모든 블록을 한 번에 분석
-            String batchAnalysisJson = vocabularyAnalysisPromptService
+            // 1. 배치 단위로 어휘 분석 → 어려운 어휘 추출
+            String batchAnalysisJson = vocabularyAnalysisPromptService // JSON 형식의 String 반환
                 .analyzeVocabularyBatchBasic(batch, 3);
             
             /*
              * Map<String, List<Map<String, Object>>>
-             * ↑       ↑     ↑       ↑
-             * │       │     │       └── 값 타입 (다양한 타입 허용)
-             * │       │     └── 단어 정보 맵 (단어, 정의, 예시 등)
-             * │       └── 블록별 단어 목록
-             * └── 블록 ID
+             *        ↑      ↑         ↑       ↑
+             *        │      │         │       └── 단어 정보 맵 (단어, 정의, 예시 등)
+             *        │      │         └── 단어 정보 맵 (단어, 정의, 예시 등)
+             *        │      └── 블록별 단어 목록
+             *        └── 블록ID
              */
-            // JSON을 Map으로 변환 (blockId → 단어리스트)
+            // JSON String을 Map으로 변환
             Map<String, List<Map<String, Object>>> blockAnalysisMap = 
                 objectMapper.readValue(batchAnalysisJson, 
                     new TypeReference<Map<String, List<Map<String, Object>>>>() {});
@@ -553,7 +505,7 @@ public class DocumentProcessService {
                     String phonemeAnalysisJson = phonemeAnalysisObj != null ? 
                             objectMapper.writeValueAsString(phonemeAnalysisObj) : null;
                     
-                    // 엔티티 생성 및 추가
+                    // 음운 분석 엔티티 생성 및 추가
                     VocabularyAnalysis entity = VocabularyAnalysis.builder()
                         .documentId(documentId)
                         .pageNumber(pageNumber)
@@ -576,7 +528,7 @@ public class DocumentProcessService {
                 }
             }
             
-            log.info("배치 처리 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 엔티티 수: {}", 
+            log.info("배치 처리 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 음운 분석 엔티티 수: {}", 
                 threadName, documentId, pageNumber, entities.size());
         } catch (Exception e) {
             log.error("배치 분석 처리 중 오류 [스레드: {}]: 문서 ID: {}, 페이지: {}", 
