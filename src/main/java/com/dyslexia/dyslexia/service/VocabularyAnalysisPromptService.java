@@ -583,6 +583,7 @@ public class VocabularyAnalysisPromptService {
         
         try {
             String wordsList = String.join(", ", words);
+            log.info("음운 분석 시작: 총 {} 단어", words.size());
             
             // 요청 본문 생성
             Map<String, Object> requestBody = new HashMap<>();
