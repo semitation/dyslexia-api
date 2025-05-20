@@ -64,10 +64,10 @@ public class DocumentProcessService {
     private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
 
     // 스레드 풀 (문서 처리 전용)
-    private static final int MAX_CONCURRENT_PAGES = 16;
-    // 스레드 풀 (어휘 분석 전용)
+    private static final int MAX_CONCURRENT_PAGES = 4;
+    // 스레드 풀 (어휘 분석 전용)   
     private final ExecutorService vocabularyAnalysisExecutor = 
-        Executors.newFixedThreadPool(Math.min(Runtime.getRuntime().availableProcessors() * 2, 32));  // 최대 32개로 제한
+        Executors.newFixedThreadPool(Math.min(Runtime.getRuntime().availableProcessors() * 2, 16));  // 최대 16개로 제한
 
 
     @Transactional
@@ -226,11 +226,17 @@ public class DocumentProcessService {
                 // 스레드 풀 종료
                 pageProcessorExecutor.shutdown();
                 try {
-                    if (!pageProcessorExecutor.awaitTermination(1, TimeUnit.MINUTES)) {
-                        pageProcessorExecutor.shutdownNow();
+                    if (!pageProcessorExecutor.awaitTermination(15, TimeUnit.MINUTES)) {
+                        log.error("문서 처리 작업이 15분 내에 완료되지 않아 강제 종료합니다. 처리 중인 페이지가 있을 수 있습니다.");
+                        List<Runnable> notExecutedTasks = pageProcessorExecutor.shutdownNow();
+                        log.error("실행되지 않은 작업 수: {}", notExecutedTasks.size());
+                    } else {
+                        log.info("모든 페이지 처리 작업이 정상적으로 완료되었습니다.");
                     }
                 } catch (InterruptedException e) {
-                    pageProcessorExecutor.shutdownNow();
+                    log.error("페이지 처리 작업 대기 중 인터럽트 발생: {}", e.getMessage());
+                    List<Runnable> notExecutedTasks = pageProcessorExecutor.shutdownNow();
+                    log.error("실행되지 않은 작업 수: {}", notExecutedTasks.size());
                     Thread.currentThread().interrupt();
                 }
             }
