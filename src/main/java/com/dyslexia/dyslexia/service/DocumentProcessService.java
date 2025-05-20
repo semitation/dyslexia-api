@@ -21,6 +21,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,6 +36,13 @@ import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
 import com.dyslexia.dyslexia.domain.pdf.TextBlock;
 import com.dyslexia.dyslexia.service.VocabularyAnalysisPromptService;
+import java.util.ArrayList;
+import java.util.concurrent.ForkJoinPool;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 @Slf4j
@@ -52,13 +63,23 @@ public class DocumentProcessService {
     private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
     private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
 
+    // 스레드 풀 (문서 처리 전용)
+    private static final int MAX_CONCURRENT_PAGES = 16;
+    // 스레드 풀 (어휘 분석 전용)
+    private final ExecutorService vocabularyAnalysisExecutor = 
+        Executors.newFixedThreadPool(Math.min(Runtime.getRuntime().availableProcessors() * 2, 32));  // 최대 32개로 제한
+
+
     @Transactional
     public Document uploadDocument(Long teacherId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
         Teacher teacher = teacherRepository.findById(teacherId)
             .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
 
         String originalFilename = file.getOriginalFilename();
-        String fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
+        }
         String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
         
         log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 고유 파일명: {}, 교사ID: {}", 
@@ -68,7 +89,10 @@ public class DocumentProcessService {
         log.info("파일 저장 경로: {}", filePath);
 
         // 파일 경로에서 폴더 경로 추출 (파일명 제외)
-        String folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+        String folderPath = filePath;
+        if (filePath != null && filePath.contains("/")) {
+            folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+        }
         log.info("PDF 폴더 경로: {}", folderPath);
 
         Document document = Document.builder()
@@ -112,17 +136,104 @@ public class DocumentProcessService {
 
             log.info("문서 ID: {}의 전체 페이지 수: {}", documentId, rawPages.size());
 
-            for (int i = 0; i < rawPages.size(); i++) {
-                int pageNumber = i + 1;
-                log.info("문서 ID: {}, 페이지 번호: {} 처리 시작", documentId, pageNumber);
-                processPage(document, pageNumber, rawPages.get(i));
-                log.info("문서 ID: {}, 페이지 번호: {} 처리 완료", documentId, pageNumber);
+            // 병렬 처리를 위한 CompletableFuture 리스트
+            List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
+            
+            /*
+             * 스레드 풀 생성: 페이지 처리 병렬화를 위한 제한된 크기의 스레드 풀
+             * MAX_CONCURRENT_PAGES 병렬 처리 스레드 수
+             * Runtime.getRuntime().availableProcessors() 현재 시스템의 코어 수
+             * 둘 중 작은 값을 선택하여 병렬 처리 스레드 수를 결정하는 이유는 시스템 자원을 효율적으로 사용하기 위함
+             */
+            ExecutorService pageProcessorExecutor = Executors.newFixedThreadPool(
+                Math.min(MAX_CONCURRENT_PAGES, Runtime.getRuntime().availableProcessors())
+            );
+            
+            try {
+                // 각 페이지를 병렬로 처리
+                for (int i = 0; i < rawPages.size(); i++) {
+                    final int pageNumber = i + 1;
+                    final String pageContent = rawPages.get(i);
+                    
+                    CompletableFuture<Void> pageFuture = CompletableFuture
+                        .runAsync(() -> {
+                            try {
+                                log.info("문서 ID: {}, 페이지 번호: {} 병렬 처리 시작", documentId, pageNumber);
+                                processPageWithTransaction(document, pageNumber, pageContent);
+                                log.info("문서 ID: {}, 페이지 번호: {} 병렬 처리 완료", documentId, pageNumber);
+                            } catch (Exception e) {
+                                log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", documentId, pageNumber, e);
+                                throw e; // 상위 CompletableFuture에서 처리하도록 재발생
+                            }
+                        }, pageProcessorExecutor)
+                        .exceptionally(ex -> {
+                            log.error("페이지 처리 실패: 문서 ID: {}, 페이지 번호: {}", documentId, pageNumber, ex);
+                            // 페이지 상태 업데이트 로직
+                            updatePageStatusToFailed(document, pageNumber);
+                            return null;
+                        });
+                    
+                    pageFutures.add(pageFuture);
+                }
+                
+                // 모든 페이지 처리 완료 대기
+                CompletableFuture<Void> allPagesFuture = CompletableFuture.allOf(
+                    pageFutures.toArray(new CompletableFuture[0])
+                );
+                
+                try {
+                    // 타임아웃 설정 (전체 문서 처리 제한 시간)
+                    allPagesFuture.get(3, TimeUnit.HOURS);
+                    
+                    // 모든 페이지 처리 성공 시 문서 상태 업데이트
+                    document.setProcessStatus(DocumentProcessStatus.COMPLETED);
+                    documentRepository.save(document);
+                    log.info("문서 ID: {}의 모든 처리가 병렬로 완료되었습니다.", documentId);
+                } catch (TimeoutException e) {
+                    log.error("문서 처리 타임아웃: 문서 ID: {}", documentId, e);
+                    document.setProcessStatus(DocumentProcessStatus.FAILED);
+                    documentRepository.save(document);
+                } catch (Exception e) {
+                    log.error("일부 페이지 처리 실패: 문서 ID: {}", documentId, e);
+                    
+                    // 완료된 페이지 수
+                    long completedPages = pageRepository.findByDocumentId(documentId).stream()
+                        .filter(p -> p.getProcessingStatus() == DocumentProcessStatus.COMPLETED)
+                        .count();
+                    
+                    // 실패한 페이지 수
+                    long failedPages = pageRepository.findByDocumentId(documentId).stream()
+                        .filter(p -> p.getProcessingStatus() == DocumentProcessStatus.FAILED)
+                        .count();
+                    
+                    // 미처리된 페이지 수
+                    long pendingPages = rawPages.size() - completedPages - failedPages;
+                    
+                    log.error("문서 ID: {}의 처리 결과 - 총 페이지: {}, 완료: {}, 실패: {}, 미처리: {}", 
+                              documentId, rawPages.size(), completedPages, failedPages, pendingPages);
+                    
+                    if (completedPages > 0 && completedPages == rawPages.size()) {
+                        document.setProcessStatus(DocumentProcessStatus.COMPLETED);
+                        log.info("문서 ID: {}의 모든 페이지가 처리 완료되었습니다.", documentId);
+                    } else {
+                        document.setProcessStatus(DocumentProcessStatus.FAILED);
+                        log.error("문서 ID: {}의 처리가 실패했습니다. 일부 페이지({}/{})만 처리되었습니다.", 
+                                 documentId, completedPages, rawPages.size());
+                    }
+                    documentRepository.save(document);
+                }
+            } finally {
+                // 스레드 풀 종료
+                pageProcessorExecutor.shutdown();
+                try {
+                    if (!pageProcessorExecutor.awaitTermination(1, TimeUnit.MINUTES)) {
+                        pageProcessorExecutor.shutdownNow();
+                    }
+                } catch (InterruptedException e) {
+                    pageProcessorExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
-
-            document.setProcessStatus(DocumentProcessStatus.COMPLETED);
-            documentRepository.save(document);
-            log.info("문서 ID: {}의 모든 처리가 완료되었습니다.", documentId);
-
         } catch (Exception e) {
             log.error("문서 처리 중 오류 발생: 문서 ID: {}", documentId, e);
             Document document = documentRepository.findById(documentId).orElse(null);
@@ -133,6 +244,27 @@ public class DocumentProcessService {
             }
         }
     }
+    
+    /*
+     * 페이지 상태를 실패로 변경
+     */
+    @Transactional
+    public void updatePageStatusToFailed(Document document, int pageNumber) {
+        Optional<Page> page = pageRepository.findByDocumentAndPageNumber(document, pageNumber);
+        if (page.isPresent()) {
+            page.get().setProcessingStatus(DocumentProcessStatus.FAILED);
+            pageRepository.save(page.get());
+            log.warn("페이지 상태를 FAILED로 변경: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
+        }
+    }
+    
+    /*
+     * 쓰레드 풀 사용 시 트랜잭션 문제 해결을 위한 메서드
+     */
+    @Transactional
+    public void processPageWithTransaction(Document document, int pageNumber, String rawContent) {
+        processPage(document, pageNumber, rawContent);
+    }
 
     @Transactional
     public void processPage(Document document, int pageNumber, String rawContent) {
@@ -141,7 +273,10 @@ public class DocumentProcessService {
             
             // 파일 경로에서 폴더 경로 추출 (파일명 제외)
             String filePath = document.getFilePath();
-            String folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+            String folderPath = filePath;
+            if (filePath != null && filePath.contains("/")) {
+                folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+            }
             
             // ThreadLocal에 문서 정보 설정
             DocumentProcessHolder.setDocumentId(document.getId());
@@ -163,16 +298,17 @@ public class DocumentProcessService {
                 // 2. 번역된 텍스트로 AI Block 처리
                 AIPromptService.PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(translatedContent, document.getGrade());
 
-                // blocks를 JSON 문자열로 변환
+                // 3-1. blocks를 JSON 문자열로 변환
                 String processedContentStr;
                 try {
                     processedContentStr = objectMapper.writeValueAsString(blockAnalysisResult.getBlocks());
-                    log.info("변환된 블록 JSON: {}", processedContentStr);
+                    // log.info("변환된 블록 JSON: {}", processedContentStr);
                 } catch (Exception e) {
                     log.error("블록을 JSON으로 변환 중 오류 발생", e);
                     throw new RuntimeException("블록을 JSON으로 변환하는 중 오류가 발생했습니다.", e);
                 }
 
+                // 3-2. blocks를 JSON Tree형식으로 변환
                 com.fasterxml.jackson.databind.JsonNode processedContent;
                 try {
                     processedContent = objectMapper.readTree(processedContentStr);
@@ -182,6 +318,8 @@ public class DocumentProcessService {
                 }
 
                 log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
+
+                // 3-3. 텍스트 블록만 추출
                 List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
                     .filter(block -> block instanceof TextBlock textBlock && 
                             block.getType() != null && 
@@ -191,15 +329,54 @@ public class DocumentProcessService {
 
                 log.info("textBlock 개수: {}", textBlocks.size());
 
-                textBlocks.parallelStream()
-                    .forEach(textBlock -> analyzeAndSaveVocabularyAsync(textBlock, document.getId(), pageNumber));
+                // 3-4. 텍스트 블록을 배치로 변환
+                // List<Batch>: TextBlock 10개씩 묶음
+                List<List<TextBlock>> batches = createBatches(textBlocks, 10);
+                
+                // 3-5. 각 배치를 별도 스레드에서 비동기 처리
+                List<CompletableFuture<List<VocabularyAnalysis>>> batchFutures = new ArrayList<>();
+                
+                for (List<TextBlock> batch : batches) {
+                    CompletableFuture<List<VocabularyAnalysis>> future = CompletableFuture.supplyAsync(
+                        () -> analyzeVocabularyBatchImproved(batch, document.getId(), pageNumber),
+                        vocabularyAnalysisExecutor
+                    );
+                    batchFutures.add(future);
+                }
+                
+                // 3-6. 모든 배치 처리 완료 대기
+                CompletableFuture<Void> allBatchesProcessed = CompletableFuture.allOf(
+                    batchFutures.toArray(new CompletableFuture[0])
+                );
+                
+                // 3-7. 결과 수집 및 저장
+                List<VocabularyAnalysis> allEntities = new ArrayList<>();
+                try {
+                    allEntities = allBatchesProcessed
+                        .thenApply(v -> batchFutures.stream()
+                            .map(CompletableFuture::join)
+                            .flatMap(List::stream)
+                            .collect(Collectors.toList())
+                        ).get(60, TimeUnit.MINUTES); // 타임아웃 설정
+                    
+                    // 모든 결과 일괄 저장
+                    if (!allEntities.isEmpty()) {
+                        saveVocabularyAnalysisInBatch(allEntities);
+                        log.info("어휘 분석 완료: 문서 ID: {}, 페이지 번호: {}, 총 {}개 단어 처리", 
+                            document.getId(), pageNumber, allEntities.size());
+                    }
+                } catch (Exception e) {
+                    log.error("배치 비동기 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", 
+                        document.getId(), pageNumber, e);
+                }
 
-                // 3. 메타데이터 추출 (번역된 텍스트 기반)
+                // 4. 메타데이터 추출 (번역된 텍스트 기반)
                 String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
                 Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
                 Integer wordCount = aiPromptService.countWords(translatedContent);
                 Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
 
+                // 5. 페이지 엔티티 생성 및 저장
                 Page page;
                 if (existingPage.isPresent()) {
                     page = existingPage.get();
@@ -221,11 +398,13 @@ public class DocumentProcessService {
                     page = pageRepository.save(page);
                 }
 
+                // 페이지 데이터 초기화
                 if (existingPage.isPresent()) {
                     pageTipRepository.deleteAll(pageTipRepository.findByPageId(page.getId()));
                     pageImageRepository.deleteAll(pageImageRepository.findByPageId(page.getId()));
                 }
 
+                // 7. 페이지 팁 추출
                 log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", document.getId(), pageNumber);
                 List<AIPromptService.TermInfo> terms = aiPromptService.extractTerms(translatedContent, document.getGrade());
                 for (AIPromptService.TermInfo termInfo : terms) {
@@ -265,6 +444,98 @@ public class DocumentProcessService {
             // 오류 발생 시에도 ThreadLocal 반드시 정리
             DocumentProcessHolder.clear();
         }
+    }
+
+    /*
+     * 개선된 배치 처리 메서드
+     * 여러 텍스트 블록을 배치로 처리하고 음운 분석을 한 번에 수행
+     */
+    private List<VocabularyAnalysis> analyzeVocabularyBatchImproved(
+        List<TextBlock> batch, Long documentId, int pageNumber) {
+        
+        List<VocabularyAnalysis> entities = new ArrayList<>();
+        String threadName = Thread.currentThread().getName();
+        
+        try {
+            log.info("배치 처리 시작 [스레드: {}]: 문서 ID: {}, 페이지: {}, 블록 수: {}", 
+                threadName, documentId, pageNumber, batch.size());
+            
+            // 1. 배치 단위로 어휘 분석 → 어려운 어휘 추출
+            String batchAnalysisJson = vocabularyAnalysisPromptService // JSON 형식의 String 반환
+                .analyzeVocabularyBatchBasic(batch, 3);
+            
+            /*
+             * Map<String, List<Map<String, Object>>>
+             *        ↑      ↑         ↑       ↑
+             *        │      │         │       └── 단어 정보 맵 (단어, 정의, 예시 등)
+             *        │      │         └── 단어 정보 맵 (단어, 정의, 예시 등)
+             *        │      └── 블록별 단어 목록
+             *        └── 블록ID
+             */
+            // JSON String을 Map으로 변환
+            Map<String, List<Map<String, Object>>> blockAnalysisMap = 
+                objectMapper.readValue(batchAnalysisJson, 
+                    new TypeReference<Map<String, List<Map<String, Object>>>>() {});
+            
+            // 2. 모든 블록에서 추출된 단어 수집 (중복 제거)
+            Set<String> allWords = new HashSet<>();
+            for (List<Map<String, Object>> wordsList : blockAnalysisMap.values()) {
+                for (Map<String, Object> wordInfo : wordsList) {
+                    allWords.add((String) wordInfo.get("word"));
+                }
+            }
+            
+            log.info("단어 추출 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 단어 수: {}", 
+                threadName, documentId, pageNumber, allWords.size());
+            
+            // 3. 모든 단어의 음운 분석 한 번에 수행
+            Map<String, Object> phonemeAnalysisResults = 
+                vocabularyAnalysisPromptService.batchAnalyzePhonemes(allWords);
+            
+            // 4. 각 블록별로 VocabularyAnalysis 엔티티 생성
+            for (TextBlock textBlock : batch) {
+                String blockId = textBlock.getId();
+                List<Map<String, Object>> wordsList = blockAnalysisMap.get(blockId);
+                
+                if (wordsList == null) continue;
+                
+                for (Map<String, Object> wordInfo : wordsList) {
+                    String word = (String) wordInfo.get("word");
+                    Object phonemeAnalysisObj = phonemeAnalysisResults.get(word);
+                    String phonemeAnalysisJson = phonemeAnalysisObj != null ? 
+                            objectMapper.writeValueAsString(phonemeAnalysisObj) : null;
+                    
+                    // 음운 분석 엔티티 생성 및 추가
+                    VocabularyAnalysis entity = VocabularyAnalysis.builder()
+                        .documentId(documentId)
+                        .pageNumber(pageNumber)
+                        .blockId(blockId)
+                        .word(word)
+                        .startIndex((Integer) wordInfo.getOrDefault("startIndex", null))
+                        .endIndex((Integer) wordInfo.getOrDefault("endIndex", null))
+                        .definition((String) wordInfo.getOrDefault("definition", null))
+                        .simplifiedDefinition((String) wordInfo.getOrDefault("simplifiedDefinition", null))
+                        .examples(wordInfo.get("examples") != null ? 
+                                 objectMapper.writeValueAsString(wordInfo.get("examples")) : null)
+                        .difficultyLevel((String) wordInfo.getOrDefault("difficultyLevel", null))
+                        .reason((String) wordInfo.getOrDefault("reason", null))
+                        .gradeLevel(wordInfo.get("gradeLevel") instanceof Number ? 
+                                  ((Number) wordInfo.get("gradeLevel")).intValue() : null)
+                        .phonemeAnalysisJson(phonemeAnalysisJson)
+                        .createdAt(java.time.LocalDateTime.now())
+                        .build();
+                    entities.add(entity);
+                }
+            }
+            
+            log.info("배치 처리 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 음운 분석 엔티티 수: {}", 
+                threadName, documentId, pageNumber, entities.size());
+        } catch (Exception e) {
+            log.error("배치 분석 처리 중 오류 [스레드: {}]: 문서 ID: {}, 페이지: {}", 
+                threadName, documentId, pageNumber, e);
+        }
+        
+        return entities;
     }
 
     @Transactional(readOnly = true)
@@ -325,43 +596,34 @@ public class DocumentProcessService {
         return document;
     }
 
-    // Block의 content에 대해 어휘 분석을 실행하고, 결과를 VocabularyAnalysis 엔티티로 저장 (비동기)
-    private void analyzeAndSaveVocabularyAsync(TextBlock textBlock, Long documentId, int pageNumber) {
-        CompletableFuture.runAsync(() -> {
+    // 배치 생성 메서드 (추가)
+    private List<List<TextBlock>> createBatches(List<TextBlock> textBlocks, int batchSize) {
+        List<List<TextBlock>> batches = new ArrayList<>();
+        for (int i = 0; i < textBlocks.size(); i += batchSize) {
+            batches.add(textBlocks.subList(i, Math.min(i + batchSize, textBlocks.size())));
+        }
+        return batches;
+    }
+
+    // 배치 저장 메서드 (추가)
+    private void saveVocabularyAnalysisInBatch(List<VocabularyAnalysis> entities) {
+        vocabularyAnalysisRepository.saveAll(entities);
+    }
+
+    // 클래스 종료 시 스레드 풀 정리
+    @jakarta.annotation.PreDestroy
+    public void cleanup() {
+        if (vocabularyAnalysisExecutor != null) {
+            vocabularyAnalysisExecutor.shutdown();
             try {
-                // 1. 기본 어휘 분석 수행
-                String basicAnalysisJson = vocabularyAnalysisPromptService.analyzeVocabularyBasic(textBlock.getText(), 3);
-                List<Map<String, Object>> basicAnalysisList = objectMapper.readValue(basicAnalysisJson, List.class);
-                
-                // 2. 각 단어에 대해 음소 분석 수행 및 저장
-                for (Map<String, Object> basicAnalysis : basicAnalysisList) {
-                    String word = (String) basicAnalysis.get("word");
-                    String phonemeAnalysisJson = vocabularyAnalysisPromptService.analyzePhonemeAnalysis(word);
-                    
-                    // 3. 기본 분석과 음소 분석 결과를 결합하여 저장
-                    VocabularyAnalysis entity = VocabularyAnalysis.builder()
-                        .documentId(documentId)
-                        .pageNumber(pageNumber)
-                        .blockId(textBlock.getId())
-                        .word(word)
-                        .startIndex((Integer) basicAnalysis.getOrDefault("startIndex", null))
-                        .endIndex((Integer) basicAnalysis.getOrDefault("endIndex", null))
-                        .definition((String) basicAnalysis.getOrDefault("definition", null))
-                        .simplifiedDefinition((String) basicAnalysis.getOrDefault("simplifiedDefinition", null))
-                        .examples(basicAnalysis.get("examples") != null ? objectMapper.writeValueAsString(basicAnalysis.get("examples")) : null)
-                        .difficultyLevel((String) basicAnalysis.getOrDefault("difficultyLevel", null))
-                        .reason((String) basicAnalysis.getOrDefault("reason", null))
-                        .gradeLevel(basicAnalysis.get("gradeLevel") != null ? (Integer) basicAnalysis.get("gradeLevel") : null)
-                        .phonemeAnalysisJson(phonemeAnalysisJson)
-                        .createdAt(java.time.LocalDateTime.now())
-                        .build();
-                    vocabularyAnalysisRepository.save(entity);
-                    log.info("어휘 분석 저장 완료: word={}, documentId={}, pageNumber={}", word, documentId, pageNumber);
+                if (!vocabularyAnalysisExecutor.awaitTermination(1, TimeUnit.MINUTES)) {
+                    vocabularyAnalysisExecutor.shutdownNow();
                 }
-            } catch (Exception e) {
-                log.error("어휘 분석 및 저장 실패: blockId={}, pageNumber={}", textBlock.getId(), pageNumber, e);
+            } catch (InterruptedException e) {
+                vocabularyAnalysisExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
             }
-        }, taskExecutor);
+        }
     }
 
 } 
