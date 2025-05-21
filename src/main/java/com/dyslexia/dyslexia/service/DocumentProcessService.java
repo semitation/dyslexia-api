@@ -1,8 +1,10 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.domain.pdf.TextBlock;
+import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
+import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.entity.PageImage;
 import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
@@ -13,11 +15,15 @@ import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.dyslexia.dyslexia.util.DocumentProcessHolder;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -25,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,17 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
-import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
-import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
-import com.dyslexia.dyslexia.domain.pdf.TextBlock;
-import com.dyslexia.dyslexia.service.VocabularyAnalysisPromptService;
-import java.util.ArrayList;
-import java.util.concurrent.ForkJoinPool;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 @Slf4j
