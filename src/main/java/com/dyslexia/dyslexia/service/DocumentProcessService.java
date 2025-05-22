@@ -76,26 +76,16 @@ public class DocumentProcessService {
         if (originalFilename != null && originalFilename.contains(".")) {
             fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
         
-        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 고유 파일명: {}, 교사ID: {}", 
-                originalFilename, uniqueFilename, teacherId);
-                
-        String filePath = storageService.store(file, uniqueFilename, teacherId);
-        log.info("파일 저장 경로: {}", filePath);
+        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 교사ID: {}", 
+                originalFilename, teacherId);
 
-        // 파일 경로에서 폴더 경로 추출 (파일명 제외)
-        String folderPath = filePath;
-        if (filePath != null && filePath.contains("/")) {
-            folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
-        }
-        log.info("PDF 폴더 경로: {}", folderPath);
-
+        // 1. 먼저 Document 엔티티를 저장하여 ID를 생성
         Document document = Document.builder()
             .teacher(teacher)
             .title(title)
             .originalFilename(originalFilename)
-            .filePath(filePath)
+            .filePath(null) // 파일 저장 후 업데이트
             .fileSize(file.getSize())
             .mimeType(file.getContentType())
             .grade(grade)
@@ -104,6 +94,20 @@ public class DocumentProcessService {
             .build();
 
         document = documentRepository.save(document);
+        
+        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+        
+        String filePath = storageService.store(file, uniqueFilename, teacherId, document.getId());
+        log.info("파일 저장 경로: {}", filePath);
+
+        document.setFilePath(filePath);
+        document = documentRepository.save(document);
+
+        String folderPath = filePath;
+        if (filePath != null && filePath.contains("/")) {
+            folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+        }
+        log.info("PDF 폴더 경로: {}", folderPath);
 
         final Long documentId = document.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

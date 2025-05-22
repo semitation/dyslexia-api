@@ -36,13 +36,15 @@ public class StorageService {
         }
     }
 
-    public String store(MultipartFile file, String uniqueId, Long teacherId) throws IOException {
+
+    public String store(MultipartFile file, String uniqueFilename, Long teacherId, Long documentId) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("파일이 비어 있습니다.");
         }
 
         try {
-            log.info("파일 저장 요청 - 파일명: {}, 교사ID: {}, 업로드 디렉토리: {}", uniqueId, teacherId, uploadDir);
+            log.info("Document ID 기반 파일 저장 요청 - 파일명: {}, 교사ID: {}, Document ID: {}, 업로드 디렉토리: {}", 
+                    uniqueFilename, teacherId, documentId, uploadDir);
             
             String teacherFolderPath = teacherId.toString();
             Path teacherDir = Paths.get(uploadDir).resolve(teacherFolderPath);
@@ -52,25 +54,17 @@ public class StorageService {
                 log.info("교사 디렉토리 생성 완료: {}", teacherDir.toAbsolutePath());
             }
             
-            String pdfFolderName;
-            if (uniqueId.contains(".")) {
-                pdfFolderName = uniqueId.substring(0, uniqueId.lastIndexOf("."));
-            } else {
-                pdfFolderName = uniqueId;
-            }
-            
-            Path pdfDir = teacherDir.resolve(pdfFolderName);
+            Path documentDir = teacherDir.resolve(documentId.toString());
 
-            if (!Files.exists(pdfDir)) {
-                Files.createDirectories(pdfDir);
-                log.info("PDF 디렉토리 생성 완료: {}", pdfDir.toAbsolutePath());
+            if (!Files.exists(documentDir)) {
+                Files.createDirectories(documentDir);
             }
             
-            Path destinationFile = pdfDir.resolve(uniqueId)
+            Path destinationFile = documentDir.resolve(uniqueFilename)
                     .normalize().toAbsolutePath();
 
-            if (!destinationFile.startsWith(pdfDir.toAbsolutePath())) {
-                log.error("보안 오류: {} 파일을 {} 디렉토리 외부에 저장하려고 합니다", uniqueId, pdfDir);
+            if (!destinationFile.startsWith(documentDir.toAbsolutePath())) {
+                log.error("보안 오류: {} 파일을 {} 디렉토리 외부에 저장하려고 합니다", uniqueFilename, documentDir);
                 throw new IllegalStateException("보안 문제: 지정된 디렉토리 외부에 파일을 저장할 수 없습니다.");
             }
             
