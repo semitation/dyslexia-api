@@ -80,12 +80,11 @@ public class DocumentProcessService {
         log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 교사ID: {}", 
                 originalFilename, teacherId);
 
-        // 1. 먼저 Document 엔티티를 저장하여 ID를 생성
         Document document = Document.builder()
             .teacher(teacher)
             .title(title)
             .originalFilename(originalFilename)
-            .filePath(null) // 파일 저장 후 업데이트
+            .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
             .fileSize(file.getSize())
             .mimeType(file.getContentType())
             .grade(grade)

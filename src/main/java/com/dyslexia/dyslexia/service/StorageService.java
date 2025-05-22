@@ -25,9 +25,13 @@ public class StorageService {
     public void init() {
         try {
             Path path = Paths.get(uploadDir);
+            log.info("업로드 디렉토리 초기화 시도: {}", path.toAbsolutePath());
+            
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
                 log.info("업로드 디렉토리 생성 완료: {}", path.toAbsolutePath());
+            } else {
+                log.info("업로드 디렉토리가 이미 존재합니다: {}", path.toAbsolutePath());
             }
             log.info("업로드 디렉토리 초기화가 완료되었습니다: {}", path.toAbsolutePath());
         } catch (IOException e) {
@@ -46,8 +50,15 @@ public class StorageService {
             log.info("Document ID 기반 파일 저장 요청 - 파일명: {}, 교사ID: {}, Document ID: {}, 업로드 디렉토리: {}", 
                     uniqueFilename, teacherId, documentId, uploadDir);
             
+            Path uploadPath = Paths.get(uploadDir);
+            if (!Files.exists(uploadPath)) {
+                log.error("업로드 디렉토리가 존재하지 않습니다: {}", uploadPath.toAbsolutePath());
+                Files.createDirectories(uploadPath);
+                log.info("업로드 디렉토리 재생성 완료: {}", uploadPath.toAbsolutePath());
+            }
+            
             String teacherFolderPath = teacherId.toString();
-            Path teacherDir = Paths.get(uploadDir).resolve(teacherFolderPath);
+            Path teacherDir = uploadPath.resolve(teacherFolderPath);
 
             if (!Files.exists(teacherDir)) {
                 Files.createDirectories(teacherDir);
@@ -58,6 +69,7 @@ public class StorageService {
 
             if (!Files.exists(documentDir)) {
                 Files.createDirectories(documentDir);
+                log.info("Document 디렉토리 생성 완료: {}", documentDir.toAbsolutePath());
             }
             
             Path destinationFile = documentDir.resolve(uniqueFilename)

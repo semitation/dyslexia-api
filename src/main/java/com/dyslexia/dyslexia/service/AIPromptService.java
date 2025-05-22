@@ -167,7 +167,7 @@ public class AIPromptService {
                         log.info("이미지 프롬프트: {}", imagePrompt);
                         
                         if (imagePrompt != null && !imagePrompt.isEmpty()) {
-                            String imageUrl = generateImageWithReplicate(imagePrompt);
+                            String imageUrl = generateImageWithReplicate(imagePrompt, block.getId());
                             log.info("생성된 이미지 파일 경로: {}", imageUrl);
                             block.setUrl(imageUrl);
                             log.info("이미지 생성 완료 - ID: {}, Concept: {}, URL: {}",
@@ -425,7 +425,7 @@ public class AIPromptService {
                     String conceptReference = (String) imageData.get("conceptReference");
                     String altText = (String) imageData.get("altText");
                     
-                    String imageUrl = generateImageWithReplicate(description);
+                    String imageUrl = generateImageWithReplicate(description, "image_" + System.currentTimeMillis());
                     
                     @SuppressWarnings("unchecked")
                     Map<String, Object> position = (Map<String, Object>) imageData.get("position");
@@ -447,7 +447,7 @@ public class AIPromptService {
         }
     }
 
-  private String generateImageWithReplicate(String description) {
+  private String generateImageWithReplicate(String description, String blockId) {
     try {
       String prompt = """
           교육용 이미지: %s
@@ -539,7 +539,7 @@ public class AIPromptService {
                   log.info("이미지 URL 생성 성공: {}", imageUrl);
                   
                   // 이미지 URL 대신 로컬 파일 경로를 반환하도록 수정
-                  String localFilePath = saveImageToLocalFile(imageUrl, description);
+                  String localFilePath = saveImageToLocalFile(imageUrl, blockId);
                   log.info("이미지가 로컬에 저장됨: {}", localFilePath);
                   return localFilePath;
                 }
@@ -575,66 +575,41 @@ public class AIPromptService {
     }
   }
 
-  private String saveImageToLocalFile(String imageUrl, String conceptReference) {
+  private String saveImageToLocalFile(String imageUrl, String blockId) {
     try {
-      // PDF 폴더 경로 확인 (전체 경로)
-      String pdfFolderPath = DocumentProcessHolder.getPdfFolderPath();
       String teacherId = DocumentProcessHolder.getTeacherId();
-      String pdfName = DocumentProcessHolder.getPdfName();
+      Long documentId = DocumentProcessHolder.getDocumentId();
       
-      String saveDirectory;
-      Path directoryPath;
-      
-      // PDF 폴더 경로가 있으면 사용
-      if (pdfFolderPath != null && !pdfFolderPath.isEmpty()) {
-        saveDirectory = pdfFolderPath;
-        directoryPath = Paths.get(saveDirectory);
-      } 
-      // PDF 폴더 경로가 없지만 teacherId와 pdfName이 있는 경우 경로 구성
-      else if (teacherId != null && !teacherId.isEmpty() && pdfName != null && !pdfName.isEmpty()) {
-        // PDF 이름에서 확장자 제거
-        String pdfFolderName = pdfName;
-        if (pdfFolderName.contains(".")) {
-          pdfFolderName = pdfFolderName.substring(0, pdfFolderName.lastIndexOf("."));
-        }
-        
-        saveDirectory = Paths.get(uploadDir, teacherId, pdfFolderName).toString();
-        directoryPath = Paths.get(saveDirectory);
-      } 
-      // 모든 정보가 없는 경우 기본 이미지 폴더 사용
-      else {
-        saveDirectory = Paths.get(uploadDir, "images").toString();
-        directoryPath = Paths.get(saveDirectory);
-        log.warn("PDF 폴더 경로, 교사ID, PDF 이름이 모두 없습니다. 기본 이미지 폴더를 사용합니다: {}", saveDirectory);
+      if (teacherId == null || teacherId.isEmpty() || documentId == null) {
+        log.error("이미지 저장 실패: teacherId({}) 또는 documentId({})가 없습니다.", teacherId, documentId);
+        throw new IllegalStateException("teacherId와 documentId가 필요합니다.");
       }
       
-      // 디렉토리가 없으면 생성
+      String saveDirectory = Paths.get(uploadDir, teacherId, documentId.toString()).toString();
+      Path directoryPath = Paths.get(saveDirectory);
+      
+      log.info("이미지 저장 경로: {}", saveDirectory);
+      
       if (!Files.exists(directoryPath)) {
         Files.createDirectories(directoryPath);
         log.info("이미지 저장 디렉토리 생성 완료: {}", directoryPath.toAbsolutePath());
       }
       
-      // 파일명 생성 (개념 참조 + 타임스탬프)
-      String sanitizedName = conceptReference.replaceAll("[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s]", "_")
-                                          .replaceAll("\\s+", "_");
-      String fileName = sanitizedName + "_" + System.currentTimeMillis() + ".png";
+      String fileName = blockId + ".png";
       Path filePath = Paths.get(saveDirectory, fileName);
       
-      // 이미지 다운로드 및 저장
       URL url = new URL(imageUrl);
       try (java.io.InputStream in = url.openStream()) {
         Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
       }
       
-      // 전체 파일 경로 반환 (PDF 경로와 동일한 형식)
       String absoluteFilePath = filePath.toAbsolutePath().toString();
-      log.info("이미지가 저장된 전체 경로: {}", absoluteFilePath);
+      log.info("이미지가 저장된 전체 경로: {} (Block ID: {})", absoluteFilePath, blockId);
       
       return absoluteFilePath;
       
     } catch (Exception e) {
       log.error("이미지를 로컬에 저장하는 중 오류 발생: {}", e.getMessage(), e);
-      // 오류 발생 시 원본 URL 반환
       return imageUrl;
     }
   }

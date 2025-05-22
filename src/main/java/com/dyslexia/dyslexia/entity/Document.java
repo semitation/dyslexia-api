@@ -35,7 +35,7 @@ public class Document {
     private String originalFilename;
 
     @Setter
-    @Column(name = "file_path", nullable = false, length = 500)
+    @Column(name = "file_path", nullable = true, length = 500)
     private String filePath;
 
     @Column(name = "file_size")
