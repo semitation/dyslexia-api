@@ -5,6 +5,7 @@ public class DocumentProcessHolder {
     private static final ThreadLocal<String> pdfName = new ThreadLocal<>();
     private static final ThreadLocal<String> teacherId = new ThreadLocal<>();
     private static final ThreadLocal<String> pdfFolderPath = new ThreadLocal<>();
+    private static final ThreadLocal<Integer> pageNumber = new ThreadLocal<>();
 
     public static void setDocumentId(Long id) {
         documentId.set(id);
@@ -37,11 +38,20 @@ public class DocumentProcessHolder {
     public static String getPdfFolderPath() {
         return pdfFolderPath.get();
     }
+    
+    public static void setPageNumber(Integer number) {
+        pageNumber.set(number);
+    }
+    
+    public static Integer getPageNumber() {
+        return pageNumber.get() != null ? pageNumber.get() : 1; // 기본값 1
+    }
 
     public static void clear() {
         documentId.remove();
         pdfName.remove();
         teacherId.remove();
         pdfFolderPath.remove();
+        pageNumber.remove();
     }
 }

@@ -288,6 +288,7 @@ public class DocumentProcessService {
             DocumentProcessHolder.setPdfName(document.getOriginalFilename());
             DocumentProcessHolder.setTeacherId(document.getTeacher().getId().toString());
             DocumentProcessHolder.setPdfFolderPath(folderPath);
+            DocumentProcessHolder.setPageNumber(pageNumber); // 페이지 번호 설정 추가
             
             try {
                 Optional<Page> existingPage = pageRepository.findByDocumentAndPageNumber(document, pageNumber);

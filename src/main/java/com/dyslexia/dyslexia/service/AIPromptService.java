@@ -579,13 +579,14 @@ public class AIPromptService {
     try {
       String teacherId = DocumentProcessHolder.getTeacherId();
       Long documentId = DocumentProcessHolder.getDocumentId();
+      Integer pageNumber = DocumentProcessHolder.getPageNumber();
       
       if (teacherId == null || teacherId.isEmpty() || documentId == null) {
         log.error("이미지 저장 실패: teacherId({}) 또는 documentId({})가 없습니다.", teacherId, documentId);
         throw new IllegalStateException("teacherId와 documentId가 필요합니다.");
       }
       
-      String saveDirectory = Paths.get(uploadDir, teacherId, documentId.toString()).toString();
+      String saveDirectory = Paths.get(uploadDir, teacherId, documentId.toString(), pageNumber.toString()).toString();
       Path directoryPath = Paths.get(saveDirectory);
       
       log.info("이미지 저장 경로: {}", saveDirectory);
@@ -597,17 +598,17 @@ public class AIPromptService {
       
       String fileName = blockId + ".png";
       Path filePath = Paths.get(saveDirectory, fileName);
-      
+
       URL url = new URL(imageUrl);
       try (java.io.InputStream in = url.openStream()) {
         Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
       }
-      
+
       String absoluteFilePath = filePath.toAbsolutePath().toString();
       log.info("이미지가 저장된 전체 경로: {} (Block ID: {})", absoluteFilePath, blockId);
-      
+
       return absoluteFilePath;
-      
+
     } catch (Exception e) {
       log.error("이미지를 로컬에 저장하는 중 오류 발생: {}", e.getMessage(), e);
       return imageUrl;

@@ -7,11 +7,15 @@ import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -22,6 +26,8 @@ public class DocumentContentService {
     private final PageRepository pageRepository;
     private final PageTipRepository pageTipRepository;
     private final PageImageRepository pageImageRepository;
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
 
     public List<Page> getPagesByDocumentId(Long documentId, Integer pageNumber) {
         if (pageNumber != null) {
@@ -41,4 +47,19 @@ public class DocumentContentService {
     public List<PageImage> getPageImagesByPageId(Long pageId) {
         return pageImageRepository.findByPageId(pageId);
     }
-} 
+
+    public byte[] getImage(Long teacherId, Long documentId, Integer pageNumber, String blockId) {
+        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, teacherId, documentId, pageNumber, blockId + ".png");
+
+        try {
+            Path filePath = Paths.get(imagePath);
+            if (Files.exists(filePath)) {
+                return Files.readAllBytes(filePath);
+            } else {
+                throw new RuntimeException("Image not found");
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+}
