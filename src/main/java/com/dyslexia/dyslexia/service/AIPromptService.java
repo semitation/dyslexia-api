@@ -9,10 +9,8 @@ import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.ImageType;
 import com.dyslexia.dyslexia.enums.TermType;
 import com.dyslexia.dyslexia.util.ChatRequestBuilder;
-import com.dyslexia.dyslexia.util.PromptBuilder;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.dyslexia.dyslexia.util.DocumentProcessHolder;
+import com.dyslexia.dyslexia.util.PromptBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -31,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -43,7 +42,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -169,8 +167,8 @@ public class AIPromptService {
                         log.info("이미지 프롬프트: {}", imagePrompt);
                         
                         if (imagePrompt != null && !imagePrompt.isEmpty()) {
-                            String imageUrl = generateImageWithReplicate(imagePrompt);
-                            log.info("생성된 이미지 URL: {}", imageUrl);
+                            String imageUrl = generateImageWithReplicate(imagePrompt, block.getId());
+                            log.info("생성된 이미지 파일 경로: {}", imageUrl);
                             block.setUrl(imageUrl);
                             log.info("이미지 생성 완료 - ID: {}, Concept: {}, URL: {}",
                                 block.getId(), block.getConcept(), imageUrl);
@@ -427,18 +425,13 @@ public class AIPromptService {
                     String conceptReference = (String) imageData.get("conceptReference");
                     String altText = (String) imageData.get("altText");
                     
-                    String imageUrl = generateImageWithReplicate(description);
+                    String imageUrl = generateImageWithReplicate(description, "image_" + System.currentTimeMillis());
                     
                     @SuppressWarnings("unchecked")
                     Map<String, Object> position = (Map<String, Object>) imageData.get("position");
                     com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
 
-                    // TODO: 로컬 파일로 처리하려면 로직을 더 수정해야할듯함. 그러기보다는 imageUrl 원본 그대로 사용해도 될듯..? - 은기  to 동현
-//                    String localFilePath = saveImageToLocalFile(imageUrl, conceptReference);
-//                    if (!localFilePath.isEmpty()) {
-//                        imageUrl = localFilePath; // imageUrl 변수를 로컬 경로로 업데이트
-//                    }
-
+                    // 이제 generateImageWithReplicate 메서드에서 이미 로컬 경로를 반환하므로 추가 처리 필요 없음
                     images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
                 }
                 
@@ -454,7 +447,7 @@ public class AIPromptService {
         }
     }
 
-  private String generateImageWithReplicate(String description) {
+  private String generateImageWithReplicate(String description, String blockId) {
     try {
       String prompt = """
           교육용 이미지: %s
@@ -544,7 +537,11 @@ public class AIPromptService {
                 
                 if (imageUrl != null && !imageUrl.isEmpty()) {
                   log.info("이미지 URL 생성 성공: {}", imageUrl);
-                  return imageUrl;
+                  
+                  // 이미지 URL 대신 로컬 파일 경로를 반환하도록 수정
+                  String localFilePath = saveImageToLocalFile(imageUrl, blockId);
+                  log.info("이미지가 로컬에 저장됨: {}", localFilePath);
+                  return localFilePath;
                 }
               }
               
@@ -578,43 +575,40 @@ public class AIPromptService {
     }
   }
 
-  private String saveImageToLocalFile(String imageUrl, String conceptReference) {
+  private String saveImageToLocalFile(String imageUrl, String blockId) {
     try {
-      String pdfFolderPath = DocumentProcessHolder.getPdfFolderPath();
+      String teacherId = DocumentProcessHolder.getTeacherId();
+      Long documentId = DocumentProcessHolder.getDocumentId();
+      Integer pageNumber = DocumentProcessHolder.getPageNumber();
       
-      if (pdfFolderPath == null || pdfFolderPath.isEmpty()) {
-        log.warn("PDF 폴더 경로가 없습니다. 이미지를 로컬에 저장하지 않고 URL만 반환합니다.");
-        return imageUrl;
+      if (teacherId == null || teacherId.isEmpty() || documentId == null) {
+        log.error("이미지 저장 실패: teacherId({}) 또는 documentId({})가 없습니다.", teacherId, documentId);
+        throw new IllegalStateException("teacherId와 documentId가 필요합니다.");
       }
       
-      Path directory = Paths.get(pdfFolderPath);
-      if (!Files.exists(directory)) {
-        Files.createDirectories(directory);
-        log.info("PDF 폴더 생성 완료: {}", directory.toAbsolutePath());
+      String saveDirectory = Paths.get(uploadDir, teacherId, documentId.toString(), pageNumber.toString()).toString();
+      Path directoryPath = Paths.get(saveDirectory);
+      
+      log.info("이미지 저장 경로: {}", saveDirectory);
+      
+      if (!Files.exists(directoryPath)) {
+        Files.createDirectories(directoryPath);
+        log.info("이미지 저장 디렉토리 생성 완료: {}", directoryPath.toAbsolutePath());
       }
       
-      String sanitizedName = conceptReference.replaceAll("[^a-zA-Z0-9가-힣ㄱ-ㅎㅏ-ㅣ\\s]", "_")
-                                          .replaceAll("\\s+", "_");
-      String fileName = sanitizedName + "_" + System.currentTimeMillis() + ".png";
-      Path filePath = directory.resolve(fileName);
-      
+      String fileName = blockId + ".png";
+      Path filePath = Paths.get(saveDirectory, fileName);
+
       URL url = new URL(imageUrl);
       try (java.io.InputStream in = url.openStream()) {
         Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
       }
-      
-      log.info("이미지가 PDF와 동일한 폴더에 저장되었습니다: {}", filePath);
-      
-      String relativePath = pdfFolderPath;
-      if (relativePath.startsWith(uploadDir)) {
-        relativePath = relativePath.substring(uploadDir.length());
-      }
-      if (relativePath.startsWith("/")) {
-        relativePath = relativePath.substring(1);
-      }
-      
-      return "/" + relativePath + "/" + fileName;
-      
+
+      String absoluteFilePath = filePath.toAbsolutePath().toString();
+      log.info("이미지가 저장된 전체 경로: {} (Block ID: {})", absoluteFilePath, blockId);
+
+      return absoluteFilePath;
+
     } catch (Exception e) {
       log.error("이미지를 로컬에 저장하는 중 오류 발생: {}", e.getMessage(), e);
       return imageUrl;

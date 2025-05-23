@@ -1,8 +1,10 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.domain.pdf.TextBlock;
+import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
+import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.entity.PageImage;
 import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
@@ -13,11 +15,15 @@ import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
 import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.dyslexia.dyslexia.util.DocumentProcessHolder;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -25,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -32,17 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
-import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
-import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
-import com.dyslexia.dyslexia.domain.pdf.TextBlock;
-import com.dyslexia.dyslexia.service.VocabularyAnalysisPromptService;
-import java.util.ArrayList;
-import java.util.concurrent.ForkJoinPool;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
-import com.fasterxml.jackson.core.type.TypeReference;
 
 @Service
 @Slf4j
@@ -80,26 +76,15 @@ public class DocumentProcessService {
         if (originalFilename != null && originalFilename.contains(".")) {
             fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
         
-        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 고유 파일명: {}, 교사ID: {}", 
-                originalFilename, uniqueFilename, teacherId);
-                
-        String filePath = storageService.store(file, uniqueFilename, teacherId);
-        log.info("파일 저장 경로: {}", filePath);
-
-        // 파일 경로에서 폴더 경로 추출 (파일명 제외)
-        String folderPath = filePath;
-        if (filePath != null && filePath.contains("/")) {
-            folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
-        }
-        log.info("PDF 폴더 경로: {}", folderPath);
+        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 교사ID: {}", 
+                originalFilename, teacherId);
 
         Document document = Document.builder()
             .teacher(teacher)
             .title(title)
             .originalFilename(originalFilename)
-            .filePath(filePath)
+            .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
             .fileSize(file.getSize())
             .mimeType(file.getContentType())
             .grade(grade)
@@ -108,6 +93,20 @@ public class DocumentProcessService {
             .build();
 
         document = documentRepository.save(document);
+        
+        String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
+        
+        String filePath = storageService.store(file, uniqueFilename, teacherId, document.getId());
+        log.info("파일 저장 경로: {}", filePath);
+
+        document.setFilePath(filePath);
+        document = documentRepository.save(document);
+
+        String folderPath = filePath;
+        if (filePath != null && filePath.contains("/")) {
+            folderPath = filePath.substring(0, filePath.lastIndexOf("/"));
+        }
+        log.info("PDF 폴더 경로: {}", folderPath);
 
         final Long documentId = document.getId();
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -289,6 +288,7 @@ public class DocumentProcessService {
             DocumentProcessHolder.setPdfName(document.getOriginalFilename());
             DocumentProcessHolder.setTeacherId(document.getTeacher().getId().toString());
             DocumentProcessHolder.setPdfFolderPath(folderPath);
+            DocumentProcessHolder.setPageNumber(pageNumber); // 페이지 번호 설정 추가
             
             try {
                 Optional<Page> existingPage = pageRepository.findByDocumentAndPageNumber(document, pageNumber);

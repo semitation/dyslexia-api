@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -33,7 +34,8 @@ public class Document {
     @Column(name = "original_filename", nullable = false)
     private String originalFilename;
 
-    @Column(name = "file_path", nullable = false, length = 500)
+    @Setter
+    @Column(name = "file_path", nullable = true, length = 500)
     private String filePath;
 
     @Column(name = "file_size")
