@@ -596,7 +596,7 @@ public class AIPromptService {
         log.info("이미지 저장 디렉토리 생성 완료: {}", directoryPath.toAbsolutePath());
       }
       
-      String fileName = blockId + ".png";
+      String fileName = blockId + ".svg";
       Path filePath = Paths.get(saveDirectory, fileName);
 
       URL url = new URL(imageUrl);

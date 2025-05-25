@@ -49,7 +49,7 @@ public class DocumentContentService {
     }
 
     public byte[] getImage(Long teacherId, Long documentId, Integer pageNumber, String blockId) {
-        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, teacherId, documentId, pageNumber, blockId + ".png");
+        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, teacherId, documentId, pageNumber, blockId + ".svg");
 
         try {
             Path filePath = Paths.get(imagePath);

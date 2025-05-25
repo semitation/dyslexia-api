@@ -112,7 +112,7 @@ public class DocumentContentController {
 //        return ResponseEntity.ok(responses);
 //    }
 
-    @GetMapping(value = "/pages/images/{teacherId}/{documentId}/{pageNumber}/{blockId}", produces = MediaType.IMAGE_PNG_VALUE)
+    @GetMapping(value = "/pages/images/{teacherId}/{documentId}/{pageNumber}/{blockId}")
     @Operation(
         summary = "페이지 이미지 조회",
         description = "특정 페이지와 블록에 연결된 이미지를 조회합니다."
@@ -126,7 +126,7 @@ public class DocumentContentController {
         byte[] imageData = documentContentService.getImage(teacherId, documentId, pageNumber, blockId);
 
         return ResponseEntity.ok()
-            .contentType(MediaType.IMAGE_PNG)
+            .contentType(MediaType.parseMediaType("image/svg+xml"))
             .contentLength(imageData.length)
             .header("Cache-Control", "max-age=86400")
             .body(imageData);
