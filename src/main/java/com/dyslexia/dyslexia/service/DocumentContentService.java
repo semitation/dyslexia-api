@@ -7,10 +7,6 @@ import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,18 +44,18 @@ public class DocumentContentService {
         return pageImageRepository.findByPageId(pageId);
     }
 
-    public byte[] getImage(Long teacherId, Long documentId, Integer pageNumber, String blockId) {
-        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, teacherId, documentId, pageNumber, blockId + ".svg");
-
-        try {
-            Path filePath = Paths.get(imagePath);
-            if (Files.exists(filePath)) {
-                return Files.readAllBytes(filePath);
-            } else {
-                throw new RuntimeException("Image not found");
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
+//    public byte[] getImage(Long teacherId, Long documentId, Integer pageNumber, String blockId) {
+//        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, teacherId, documentId, pageNumber, blockId + ".svg");
+//
+//        try {
+//            Path filePath = Paths.get(imagePath);
+//            if (Files.exists(filePath)) {
+//                return Files.readAllBytes(filePath);
+//            } else {
+//                throw new RuntimeException("Image not found");
+//            }
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//    }
 }
