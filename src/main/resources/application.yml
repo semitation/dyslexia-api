@@ -15,20 +15,27 @@ spring:
     hibernate:
       ddl-auto: update
       default_batch_fetch_size: 100
+
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 100MB
+      file-size-threshold: 2KB
+
   web:
     resources:
-      static-locations: 
+      static-locations:
         - classpath:/static/
         - classpath:/public/
         - classpath:/resources/
         - classpath:/META-INF/resources/
         - file:${user.home}/${UPLOAD_DIR}/
         - file:./uploads/
-      
+
 app:
   upload:
     dir: ${user.home}/${UPLOAD_DIR}
-    
+
 jwt:
   secret: ${JWT_SECRET}
   access-token-validity-in-seconds: 604800  # 1주일
@@ -68,7 +75,7 @@ deepl:
   api:
     url: https://api-free.deepl.com
     key: ${DEEPL_SECRET}
-    
+
 replicate:
   api:
     url: https://api.replicate.com/v1/predictions
