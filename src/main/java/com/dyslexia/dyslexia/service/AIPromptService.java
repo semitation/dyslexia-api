@@ -607,7 +607,7 @@ public class AIPromptService {
       String absoluteFilePath = filePath.toAbsolutePath().toString();
       log.info("이미지가 저장된 전체 경로: {} (Block ID: {})", absoluteFilePath, blockId);
 
-      return absoluteFilePath;
+      return filePath.subpath(3, filePath.getNameCount()).toString();
 
     } catch (Exception e) {
       log.error("이미지를 로컬에 저장하는 중 오류 발생: {}", e.getMessage(), e);
