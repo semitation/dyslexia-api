@@ -459,15 +459,15 @@ public class AIPromptService {
 
       log.info(prompt);
 
-      String selectedStyle = "any";
+      String selectedStyle = "digital_illustration/infantile_sketch";
       
       Map<String, Object> input = new HashMap<>();
       input.put("prompt", prompt);
       input.put("style", selectedStyle);
-      input.put("size", "1024x1024");
+      input.put("size", "1536x1024");
       
       Map<String, Object> requestBody = new HashMap<>();
-      requestBody.put("version", "recraft-ai/recraft-v3-svg");
+      requestBody.put("version", "recraft-ai/recraft-v3");
       requestBody.put("input", input);
       
       String jsonBody = objectMapper.writeValueAsString(requestBody);
@@ -596,7 +596,7 @@ public class AIPromptService {
         log.info("이미지 저장 디렉토리 생성 완료: {}", directoryPath.toAbsolutePath());
       }
       
-      String fileName = blockId + ".svg";
+      String fileName = blockId + ".webp";
       Path filePath = Paths.get(saveDirectory, fileName);
 
       URL url = new URL(imageUrl);
@@ -648,6 +648,27 @@ public class AIPromptService {
     } catch (Exception e) {
       log.error("OpenAI 번역 실패: {}", e.getMessage());
       throw new RuntimeException("OpenAI 번역 실패: " + e.getMessage(), e);
+    }
+  }
+
+  public String promptToOpenAI(String prompt) {
+    if (prompt == null || prompt.trim().isEmpty()) {
+        log.error("OpenAI 프롬프트가 null 또는 빈 문자열입니다.");
+        return "";
+    }
+    try {
+      Map<String, Object> requestBody = new ChatRequestBuilder()
+          .model(MODEL)
+          .temperature(0.3)
+          .userMessage(prompt)
+          .systemMessage(prompt)
+          .build();
+      log.info("OpenAI requestBody: {}", requestBody);
+      Map<String, Object> response = requestToApi(requestBody);
+      return extractMessageContent(response);
+    } catch (Exception e) {
+      log.error("OpenAI 프롬프트 요청 실패: {}", e.getMessage(), e);
+      return "";
     }
   }
 
