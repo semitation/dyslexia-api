@@ -454,13 +454,33 @@ public class VocabularyAnalysisPromptService {
      * 배치 어휘 분석을 위한 시스템 프롬프트
      */
     private String getBatchSystemPrompt() {
-        return "당신은 9-13세 난독증이 있는 초등학생을 위한 어휘 분석 전문가입니다.\n" +
-               "여러 텍스트 블록을 분석하여 각 블록별로 학생들이 읽고 이해하기 어려운 단어를 찾아내주세요.\n" +
+        return "당신은 9-13세 난독증이 있는 초등학생을 위한 어휘 및 음운 분석 전문가입니다.\n" +
+               "여러 텍스트 블록을 분석하여 각 블록별로 학생들이 읽고 이해하기 어려운 단어를 추출하고, 각 단어에 대해 음운 분석(초성, 중성, 종성, 쓰기 순서 등)까지 포함하여 JSON으로 제공하세요.\n" +
                "각 블록은 '---BLOCK_SEPARATOR---'로 구분되며, 각 블록은 'BLOCK_ID:'로 시작하는 ID를 가집니다.\n\n" +
-               "## 필수 지침: 각 텍스트 블록마다 정확히 하나 이상의 단어를를 추출하세요. ##\n" +
-               "이 요구사항은 어떤 상황에서도 준수되어야 하며, 각 블록 ID에 대해 정확히 한 개의 단어만 포함된 배열이 있어야 합니다.\n" +
-               "만약 명백하게 어려운 단어가 없는 블록이라도, 해당 블록에서 가장 중요하거나 의미 있는 단어(명사, 동사, 형용사 등)를 선택하여 추출하세요.\n" +
-               "블록 내용이 단 한 문장이거나 매우 짧더라도 반드시 단어를 찾아내야 합니다.\n\n" +
+               "## 반드시 아래 TypeScript 스키마를 따라야 합니다. 누락 없이 모든 필드를 포함하세요. ##\n" +
+               "```typescript\n" +
+               "export interface PhonemeAnalysis {\n" +
+               "  syllables: SyllableInfo[];\n" +
+               "}\n" +
+               "export interface SyllableInfo {\n" +
+               "  character: string;\n" +
+               "  pronunciation: string;\n" +
+               "  difficulty?: number;\n" +
+               "  syllable: string;\n" +
+               "  writingTips: string;\n" +
+               "  examples?: string[];\n" +
+               "  components: {\n" +
+               "    initial?: { consonant: string; pronunciation: string; };\n" +
+               "    medial?: { vowel: string; pronunciation: string; };\n" +
+               "    final?: { consonant: string; pronunciation: string; };\n" +
+               "  };\n" +
+               "}\n" +
+               "```\n" +
+               "각 단어의 phoneme 필드는 반드시 위 구조를 따라야 하며, 모든 필드를 빠짐없이 포함해야 합니다.\n\n" +
+               "## 필수 지침: 각 텍스트 블록마다 반드시 하나 이상의 단어를 추출하고, 각 단어에 대해 음운 분석 정보를 포함하세요. ##\n" +
+               "이 요구사항은 어떤 상황에서도 준수되어야 하며, 각 블록 ID에 대해 반드시 단어와 그 단어의 음운 분석이 포함되어야 합니다.\n" +
+               "명백하게 어려운 단어가 없는 블록이라도, 해당 블록에서 가장 중요하거나 의미 있는 단어(명사, 동사, 형용사 등)를 선택하여 추출하고, 반드시 음운 분석 정보를 포함하세요.\n" +
+               "블록 내용이 단 한 문장이거나 매우 짧더라도 반드시 단어와 음운 분석 정보를 포함해야 합니다.\n\n" +
                "어려운 어휘 판단 기준:\n" +
                "1. 3음절 이상의 복합어\n" +
                "2. 초등 3-4학년 수준을 넘는 어휘\n" +
@@ -472,10 +492,10 @@ public class VocabularyAnalysisPromptService {
                "- 일상생활에서 자주 쓰이는 단어는 3음절 이상이라도 제외\n" +
                "- 학생의 연령과 인지 수준을 고려하세요.\n" +
                "- 명백하게 어려운 단어가 없다면, 내용 이해에 중요한 핵심 단어를 선택하세요.\n" +
-               "- 단어 선택이 어렵더라도 반드시 각 블록 ID가 결과에 포함되어야 하며, 각 ID에 대해 정확히 하나의 단어만 포함되어야 합니다.\n\n" +
+               "- 단어 선택이 어렵더라도 반드시 각 블록 ID가 결과에 포함되어야 하며, 각 ID에 대해 반드시 단어와 음운 분석 정보가 포함되어야 합니다.\n\n" +
                "## 최종 확인사항: ##\n" +
                "1. 응답에서 모든 블록 ID를 키로 가지는 JSON 객체가 생성되어야 합니다.\n" +
-               "2. 각 블록 ID 키에는 정확히 하나 이상의 단어 정보가 포함된 배열이 있어야 합니다.\n";
+               "2. 각 블록 ID 키에는 반드시 하나 이상의 단어와 그 단어의 음운 분석 정보가 포함된 배열이 있어야 합니다.\n";
     }
 
     /*
@@ -485,13 +505,33 @@ public class VocabularyAnalysisPromptService {
         return String.format(
             "다음 텍스트 블록들을 분석하세요. 각 블록은 '---BLOCK_SEPARATOR---'로 구분되며, 각 블록은 'BLOCK_ID:'로 시작하는 ID를 가집니다.\n\n" +
             "텍스트 블록:\n\"%s\"\n\n" +
+            "## 반드시 아래 TypeScript 스키마를 따라야 합니다. 누락 없이 모든 필드를 포함하세요. ##\n" +
+            "```typescript\n" +
+            "export interface PhonemeAnalysis {\n" +
+            "  syllables: SyllableInfo[];\n" +
+            "}\n" +
+            "export interface SyllableInfo {\n" +
+            "  character: string;\n" +
+            "  pronunciation: string;\n" +
+            "  difficulty?: number;\n" +
+            "  syllable: string;\n" +
+            "  writingTips: string;\n" +
+            "  examples?: string[];\n" +
+            "  components: {\n" +
+            "    initial?: { consonant: string; pronunciation: string; };\n" +
+            "    medial?: { vowel: string; pronunciation: string; };\n" +
+            "    final?: { consonant: string; pronunciation: string; };\n" +
+            "  };\n" +
+            "}\n" +
+            "```\n" +
+            "각 단어의 phoneme 필드는 반드시 위 구조를 따라야 하며, 모든 필드를 빠짐없이 포함해야 합니다.\n\n" +
             "## 필수 요구사항 ##\n" +
-            "1. 예외 없이 모든 블록에 대해 반드시 하나 이상의 단어를 추출해야 합니다. 빈 배열은 절대 허용되지 않습니다.\n" +
-            "2. 명확하게 어려운 단어가 없더라도, 해당 블록에서 가장 중요한 명사, 동사, 형용사를 선택하세요.\n" +
+            "1. 예외 없이 모든 블록에 대해 반드시 하나 이상의 단어를 추출하고, 각 단어에 대해 음운 분석 정보를 포함해야 합니다. 빈 배열은 절대 허용되지 않습니다.\n" +
+            "2. 명확하게 어려운 단어가 없더라도, 해당 블록에서 가장 중요한 명사, 동사, 형용사를 선택하고 반드시 음운 분석 정보를 포함하세요.\n" +
             "3. 블록 ID를 정확히 추출하여 응답 JSON에 모든 블록 ID가 키로 포함되어야 합니다.\n" +
-            "4. 단어가 한 두 개뿐인 매우 짧은 블록이라도 핵심 단어를 반드시 선택하세요.\n" +
+            "4. 단어가 한 두 개뿐인 매우 짧은 블록이라도 핵심 단어와 음운 분석 정보를 반드시 포함하세요.\n" +
             "5. 분석을 시작하기 전에 각 블록의 ID와 텍스트 내용을 명확히 식별하세요.\n\n" +
-            "각 블록별로 단어를 분석하여 다음과 같은 JSON 형식으로 응답하세요. 블록 ID를 키로 사용하고, 각 키에는 해당 블록에서 찾은 단어 목록을 배열로 제공하세요:\n" +
+            "각 블록별로 단어와 음운 분석 정보를 분석하여 다음과 같은 JSON 형식으로 응답하세요. 블록 ID를 키로 사용하고, 각 키에는 해당 블록에서 찾은 단어와 그 단어의 음운 분석 정보가 포함된 배열을 제공하세요:\n" +
             "{\n" +
             "  \"blockId1\": [\n" +
             "    {\n" +
@@ -499,24 +539,45 @@ public class VocabularyAnalysisPromptService {
             "      \"startIndex\": 3,\n" +
             "      \"endIndex\": 5,\n" +
             "      \"definition\": \"몸으로 느끼고 알아차리는 능력\",\n" +
-            "      \"simplifiedDefinition\": \"보고, 듣고, 만지면서 알아차리는 것\",\n" +
-            "      \"examples\": [\"눈으로 보는 것도 감각이에요\"],\n" +
-            "      \"difficultyLevel\": \"medium\",\n" +
-            "      \"reason\": \"추상적 개념어\",\n" +
-            "      \"gradeLevel\": 4\n" +
+            "      \"phoneme\": {\n" +
+            "        \"syllables\": [\n" +
+            "          {\n" +
+            "            \"character\": \"감\",\n" +
+            "            \"pronunciation\": \"gam\",\n" +
+            "            \"syllable\": \"감\",\n" +
+            "            \"writingTips\": \"ㄱ을 먼저 쓰고, ㅏ를 그 옆에, 마지막에 ㅁ을 아래에 써주세요\",\n" +
+            "            \"components\": {\n" +
+            "              \"initial\": { \"consonant\": \"ㄱ\", \"pronunciation\": \"기역\" },\n" +
+            "              \"medial\": { \"vowel\": \"ㅏ\", \"pronunciation\": \"아\" },\n" +
+            "              \"final\": { \"consonant\": \"ㅁ\", \"pronunciation\": \"미음\" }\n" +
+            "            }\n" +
+            "          },\n" +
+            "          {\n" +
+            "            \"character\": \"각\",\n" +
+            "            \"pronunciation\": \"gak\",\n" +
+            "            \"syllable\": \"각\",\n" +
+            "            \"writingTips\": \"ㄱ을 먼저 쓰고, ㅏ를 그 옆에, 마지막에 ㄱ을 아래에 써주세요\",\n" +
+            "            \"components\": {\n" +
+            "              \"initial\": { \"consonant\": \"ㄱ\", \"pronunciation\": \"기역\" },\n" +
+            "              \"medial\": { \"vowel\": \"ㅏ\", \"pronunciation\": \"아\" },\n" +
+            "              \"final\": { \"consonant\": \"ㄱ\", \"pronunciation\": \"기역\" }\n" +
+            "            }\n" +
+            "          }\n" +
+            "        ]\n" +
+            "      }\n" +
             "    }\n" +
             "  ],\n" +
             "  \"blockId2\": [\n" +
-            "    // 이 블록의 어려운 단어들 (최소 하나 이상)\n" +
+            "    // 이 블록의 어려운 단어들 (최소 하나 이상, 각 단어에 phoneme 정보 포함)\n" +
             "  ]\n" +
             "}\n\n" +
             "## 절대적 중요 사항 ##\n" +
             "- 모든 블록 ID는 반드시 결과 JSON에 키로 포함되어야 합니다.\n" +
-            "- 각 블록마다 반드시 최소 하나 이상의 단어가 배열에 포함되어야 합니다.\n" +
-            "- 단어가 없거나 어려운 단어가 없는 블록이라도 가장 중요한 단어를 선택하세요.\n" +
+            "- 각 블록마다 반드시 최소 하나 이상의 단어와 그 단어의 음운 분석 정보가 배열에 포함되어야 합니다.\n" +
+            "- 단어가 없거나 어려운 단어가 없는 블록이라도 가장 중요한 단어와 음운 분석 정보를 선택하세요.\n" +
             "- JSON 형식이 정확해야 하며, 모든 필수 필드가 포함되어야 합니다.\n" +
             "- 블록 ID는 숫자만 포함해야 합니다(예: \"12\"가 \"blockId12\"가 아님).\n\n" +
-            "응답 전에 모든 블록 ID가 포함되었는지, 각 배열이 비어있지 않은지 반드시 확인하세요.",
+            "응답 전에 모든 블록 ID가 포함되었는지, 각 배열이 비어있지 않고 각 단어에 phoneme 정보가 포함되어 있는지 반드시 확인하세요.",
             text);
     }
 

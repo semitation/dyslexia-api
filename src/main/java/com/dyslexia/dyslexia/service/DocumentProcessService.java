@@ -494,10 +494,6 @@ public class DocumentProcessService {
             log.info("단어 추출 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 단어 수: {}", 
                 threadName, documentId, pageNumber, allWords.size());
             
-            // 3. 모든 단어의 음운 분석 한 번에 수행
-            Map<String, Object> phonemeAnalysisResults = 
-                vocabularyAnalysisPromptService.batchAnalyzePhonemes(allWords);
-            
             // 4. 각 블록별로 VocabularyAnalysis 엔티티 생성
             for (TextBlock textBlock : batch) {
                 String blockId = textBlock.getId();
@@ -507,11 +503,11 @@ public class DocumentProcessService {
                 
                 for (Map<String, Object> wordInfo : wordsList) {
                     String word = (String) wordInfo.get("word");
-                    Object phonemeAnalysisObj = phonemeAnalysisResults.get(word);
+                    // 통합 프롬프트 결과에서 바로 phoneme 정보 추출
+                    Object phonemeAnalysisObj = wordInfo.get("phoneme");
                     String phonemeAnalysisJson = phonemeAnalysisObj != null ? 
                             objectMapper.writeValueAsString(phonemeAnalysisObj) : null;
                     
-                    // 음운 분석 엔티티 생성 및 추가
                     VocabularyAnalysis entity = VocabularyAnalysis.builder()
                         .documentId(documentId)
                         .pageNumber(pageNumber)
