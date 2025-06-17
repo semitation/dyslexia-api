@@ -3,10 +3,10 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.CourseDto;
 import com.dyslexia.dyslexia.dto.CourseReqDto;
 import com.dyslexia.dyslexia.entity.Course;
-import com.dyslexia.dyslexia.entity.Guardian;
+import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.mapper.CourseMapper;
 import com.dyslexia.dyslexia.repository.CourseRepository;
-import com.dyslexia.dyslexia.repository.GuardianRepository;
+import com.dyslexia.dyslexia.repository.TeacherRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -23,7 +23,7 @@ public class CourseService {
   private final CourseMapper courseMapper;
 
   @Transactional
-  public CourseDto saveCourse(CourseReqDto dto) {
+  public CourseDto saveCourse(CourseRequestDto dto) {
     Guardian guardian = guardianRepository.findById(dto.getGuardianId())
         .orElseThrow(() -> new IllegalArgumentException("Guardian not found"));
 

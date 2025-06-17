@@ -2,7 +2,7 @@ package com.dyslexia.dyslexia.service;
 
 import com.dyslexia.dyslexia.dto.AIResponseDto;
 import com.dyslexia.dyslexia.entity.AIResponse;
-import com.dyslexia.dyslexia.entity.AIRquest;
+import com.dyslexia.dyslexia.entity.AIRequest;
 import com.dyslexia.dyslexia.repository.AIRequestRepository;
 import com.dyslexia.dyslexia.repository.AIResponseRepository;
 import io.github.sashirestela.openai.SimpleOpenAI;
@@ -74,7 +74,7 @@ public class OpenAIService {
   }
 
   private void saveEntity(String prompt, String message, String status, String content) {
-    AIRquest aiRequest = AIRquest.builder().prompt(prompt).model(openaiModel)
+    AIRequest aiRequest = AIRequest.builder().prompt(prompt).model(openaiModel)
         .createdAt(LocalDateTime.now()).build();
     aiRequest = aiRequestRepository.save(aiRequest);
 

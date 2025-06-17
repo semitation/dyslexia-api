@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "접근성 설정 업데이트 요청 DTO")
-public class AccessibilitySettingsUpdateRequest {
+public class AccessibilitySettingsUpdateRequestDto {
 
     @Schema(description = "페이지 ID", example = "1")
     private Long pageId;

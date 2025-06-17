@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
-import com.dyslexia.dyslexia.dto.PageContentResponse;
-import com.dyslexia.dyslexia.dto.PageTipResponse;
+import com.dyslexia.dyslexia.dto.PageContentResponseDto;
+import com.dyslexia.dyslexia.dto.PageTipResponseDto;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.service.DocumentContentService;
@@ -43,18 +43,18 @@ public class DocumentContentController {
                 content = @Content(
                     mediaType = "application/json",
                     array = @ArraySchema(
-                        schema = @Schema(implementation = PageContentResponse.class)
+                        schema = @Schema(implementation = PageContentResponseDto.class)
                     )
                 )
             )
         }
     )
-    public ResponseEntity<List<PageContentResponse>> getDocumentPages(
+    public ResponseEntity<List<PageContentResponseDto>> getDocumentPages(
             @Parameter(description = "문서 ID", required = true) @RequestParam(name = "documentId") Long documentId,
             @Parameter(description = "페이지 번호 (선택사항)") @RequestParam(name = "page", required = false) Integer pageNumber) {
         List<Page> pages = documentContentService.getPagesByDocumentId(documentId, pageNumber);
-        List<PageContentResponse> responses = pages.stream()
-                .map(page -> PageContentResponse.fromEntity(page, objectMapper))
+        List<PageContentResponseDto> responses = pages.stream()
+                .map(page -> PageContentResponseDto.fromEntity(page, objectMapper))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }
@@ -70,17 +70,17 @@ public class DocumentContentController {
                 content = @Content(
                     mediaType = "application/json",
                     array = @ArraySchema(
-                        schema = @Schema(implementation = PageTipResponse.class)
+                        schema = @Schema(implementation = PageTipResponseDto.class)
                     )
                 )
             )
         }
     )
-    public ResponseEntity<List<PageTipResponse>> getPageTips(
+    public ResponseEntity<List<PageTipResponseDto>> getPageTips(
             @Parameter(description = "페이지 ID", required = true) @PathVariable("pageId") Long pageId) {
         List<PageTip> pageTips = documentContentService.getPageTipsByPageId(pageId);
-        List<PageTipResponse> responses = pageTips.stream()
-                .map(PageTipResponse::fromEntity)
+        List<PageTipResponseDto> responses = pageTips.stream()
+                .map(PageTipResponseDto::fromEntity)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(responses);
     }

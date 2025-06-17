@@ -36,7 +36,7 @@ public class AIResponse {
 
     @OneToOne
     @JoinColumn(name = "request_id", nullable = false)
-    private AIRquest request;
+    private AIRequest request;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

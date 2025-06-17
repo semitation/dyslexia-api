@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
-import com.dyslexia.dyslexia.dto.VocabularyAnalysisSearchRequest;
+import com.dyslexia.dyslexia.dto.VocabularyAnalysisSearchRequestDto;
 import com.dyslexia.dyslexia.service.VocabularyAnalysisService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -44,7 +44,7 @@ public class VocabularyAnalysisController {
     @PostMapping("/search")
     public ResponseEntity<List<VocabularyAnalysis>> searchVocabularyAnalysis(
             @Parameter(description = "검색 조건", required = true)
-            @RequestBody VocabularyAnalysisSearchRequest request) {
+            @RequestBody VocabularyAnalysisSearchRequestDto request) {
         log.info("어휘 분석 검색 요청: documentId={}, pageNumber={}, blockId={}", 
             request.getDocumentId(), request.getPageNumber(), request.getBlockId());
             

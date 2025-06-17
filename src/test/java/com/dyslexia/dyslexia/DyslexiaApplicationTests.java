@@ -6,12 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.dyslexia.dyslexia.dto.CourseDto;
-import com.dyslexia.dyslexia.dto.CourseInfoDto;
-import com.dyslexia.dyslexia.dto.CourseInfoReqDto;
-import com.dyslexia.dyslexia.dto.CourseReqDto;
+import com.dyslexia.dyslexia.dto.CourseRequestDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
-import com.dyslexia.dyslexia.dto.StudentReqDto;
 import com.dyslexia.dyslexia.dto.GuardianDto;
+import com.dyslexia.dyslexia.dto.StudentRequestDto;
 import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.Grade;
@@ -95,8 +93,8 @@ class DyslexiaApplicationTests {
             .build());
   }
 
-  private StudentDto createStudent(String clientId, Guardian guardian, String gradeLabel) {
-    StudentReqDto req = new StudentReqDto();
+  private StudentDto createStudent(String clientId, Teacher teacher, String gradeLabel) {
+    StudentRequestDto req = new StudentRequestDto();
     req.setClientId(clientId);
     req.setGuardianId(guardian.getId());
     req.setGradeLabel(gradeLabel);
@@ -110,7 +108,7 @@ class DyslexiaApplicationTests {
   }
 
   private CourseDto createCourse(String title, Guardian guardian, Grade grade) {
-    CourseReqDto req = new CourseReqDto();
+    CourseRequestDto req = new CourseRequestDto();
     req.setGuardianId(guardian.getId());
     req.setSubjectPath("math/" + title);
     req.setTitle(title);

@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "페이지 콘텐츠 응답")
-public class PageContentResponse {
+public class PageContentResponseDto {
 
     @Schema(description = "페이지 ID")
     private Long id;
@@ -65,7 +65,7 @@ public class PageContentResponse {
            example = "[{\"id\":\"1\",\"type\":\"HEADING1\",\"text\":\"챕터 제목\"},{\"id\":\"2\",\"type\":\"TEXT\",\"text\":\"본문\"},{\"id\":\"3\",\"type\":\"LIST\",\"items\":[\"항목1\",\"항목2\"]}]")
     private List<Block> blocks;
 
-    public static PageContentResponse fromEntity(Page page, ObjectMapper objectMapper) {
+    public static PageContentResponseDto fromEntity(Page page, ObjectMapper objectMapper) {
         List<Block> blocks = null;
         try {
             if (page.getProcessedContent() != null && !page.getProcessedContent().isNull()) {
@@ -76,7 +76,7 @@ public class PageContentResponse {
         } catch (Exception e) {
             blocks = Collections.emptyList();
         }
-        return PageContentResponse.builder()
+        return PageContentResponseDto.builder()
                 .id(page.getId())
                 .documentId(page.getDocument().getId())
                 .pageNumber(page.getPageNumber())

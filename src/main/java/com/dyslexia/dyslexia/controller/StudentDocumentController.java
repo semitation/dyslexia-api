@@ -1,10 +1,10 @@
 package com.dyslexia.dyslexia.controller;
 
-import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequest;
+import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.PageDto;
 import com.dyslexia.dyslexia.dto.PageListResponseDto;
-import com.dyslexia.dyslexia.dto.PageProgressUpdateRequest;
+import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.StudentDocumentListResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Page;
@@ -235,7 +235,7 @@ public class StudentDocumentController {
             @Parameter(description = "페이지 ID", required = true) 
             @PathVariable Long pageId,
             
-            @RequestBody PageProgressUpdateRequest request) {
+            @RequestBody PageProgressUpdateRequestDto request) {
         
         log.info("학생 ID: {}, 페이지 ID: {}의 진행 상태 업데이트 요청", studentId, pageId);
         
@@ -266,7 +266,7 @@ public class StudentDocumentController {
             @Parameter(description = "페이지 ID", required = true) 
             @PathVariable Long pageId,
             
-            @RequestBody AccessibilitySettingsUpdateRequest request) {
+            @RequestBody AccessibilitySettingsUpdateRequestDto request) {
         
         log.info("학생 ID: {}, 페이지 ID: {}의 접근성 설정 업데이트 요청", studentId, pageId);
         

@@ -1,8 +1,8 @@
 package com.dyslexia.dyslexia.service;
 
-import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequest;
+import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.PageDetailResponseDto;
-import com.dyslexia.dyslexia.dto.PageProgressUpdateRequest;
+import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.ResponseDto;
 import com.dyslexia.dyslexia.entity.*;
 import com.dyslexia.dyslexia.repository.*;
@@ -74,7 +74,7 @@ public class StudentDocumentService {
     }
     
     @Transactional
-    public ResponseEntity<ResponseDto> updatePageProgress(Long studentId, Long pageId, PageProgressUpdateRequest request) {
+    public ResponseEntity<ResponseDto> updatePageProgress(Long studentId, Long pageId, PageProgressUpdateRequestDto request) {
         log.info("페이지 진행 상태 업데이트: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
         
         Page page = pageRepository.findById(pageId)
@@ -133,7 +133,7 @@ public class StudentDocumentService {
     }
     
     @Transactional
-    public ResponseEntity<ResponseDto> updateAccessibilitySettings(Long studentId, Long pageId, AccessibilitySettingsUpdateRequest request) {
+    public ResponseEntity<ResponseDto> updateAccessibilitySettings(Long studentId, Long pageId, AccessibilitySettingsUpdateRequestDto request) {
         log.info("페이지 접근성 설정 업데이트: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
         
         Page page = pageRepository.findById(pageId)
@@ -181,7 +181,7 @@ public class StudentDocumentService {
         }
     }
     
-    private void updateSinglePageSettings(Student student, Page page, AccessibilitySettingsUpdateRequest request) {
+    private void updateSinglePageSettings(Student student, Page page, AccessibilitySettingsUpdateRequestDto request) {
         PageAccessibilitySettings settings = pageAccessibilitySettingsRepository
             .findByStudentIdAndPageId(student.getId(), page.getId())
             .orElse(
