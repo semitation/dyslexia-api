@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "페이지 이미지 응답")
-public class PageImageResponse {
+public class PageImageResponseDto {
 
     @Schema(description = "이미지 ID")
     private Long id;
@@ -47,8 +47,8 @@ public class PageImageResponse {
     @Schema(description = "수정 시간")
     private LocalDateTime updatedAt;
 
-    public static PageImageResponse fromEntity(PageImage pageImage) {
-        return PageImageResponse.builder()
+    public static PageImageResponseDto fromEntity(PageImage pageImage) {
+        return PageImageResponseDto.builder()
                 .id(pageImage.getId())
                 .pageId(pageImage.getPage().getId())
                 .imageUrl(pageImage.getImageUrl())

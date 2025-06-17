@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.CourseDto;
-import com.dyslexia.dyslexia.dto.CourseReqDto;
+import com.dyslexia.dyslexia.dto.CourseRequestDto;
 import com.dyslexia.dyslexia.service.CourseService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class CourseController {
   private final CourseService courseService;
 
   @PostMapping
-  public ResponseEntity<CourseDto> createCourse(@RequestBody CourseReqDto dto) {
+  public ResponseEntity<CourseDto> createCourse(@RequestBody CourseRequestDto dto) {
     return ResponseEntity.ok(courseService.saveCourse(dto));
   }
 

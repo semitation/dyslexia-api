@@ -7,7 +7,7 @@ import lombok.AllArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class VocabularyAnalysisSearchRequest {
+public class VocabularyAnalysisSearchRequestDto {
     private Long documentId;
     private Integer pageNumber;
     private String blockId;

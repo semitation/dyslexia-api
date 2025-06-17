@@ -8,7 +8,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class StudentReqDto {
+public class StudentRequestDto {
 
   private String clientId;
   private Long teacherId;

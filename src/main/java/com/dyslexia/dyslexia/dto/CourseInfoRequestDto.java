@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class CourseInfoReqDto {
+public class CourseInfoRequestDto {
 
   private Long courseId;
   private Long studentId;

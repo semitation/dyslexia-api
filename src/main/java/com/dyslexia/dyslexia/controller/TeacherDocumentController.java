@@ -1,6 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
-import com.dyslexia.dyslexia.dto.DocumentAssignmentRequest;
+import com.dyslexia.dyslexia.dto.DocumentAssignmentRequestDto;
 import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.ResponseDto;
 import com.dyslexia.dyslexia.dto.StudentDocumentListResponseDto;
@@ -111,7 +111,7 @@ public class TeacherDocumentController {
     })
     @PostMapping("/assign")
     public ResponseEntity<ResponseDto> assignDocumentToStudent(
-            @RequestBody DocumentAssignmentRequest request) {
+            @RequestBody DocumentAssignmentRequestDto request) {
         
         log.info("문서 할당 요청: 선생님 ID: {}, 학생 ID: {}, 문서 ID: {}", 
                 request.getTeacherId(), request.getStudentId(), request.getDocumentId());

@@ -18,7 +18,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Schema(description = "페이지 팁 응답")
-public class PageTipResponse {
+public class PageTipResponseDto {
 
     @Schema(description = "팁 ID")
     private Long id;
@@ -50,8 +50,8 @@ public class PageTipResponse {
     @Schema(description = "수정 시간")
     private LocalDateTime updatedAt;
 
-    public static PageTipResponse fromEntity(PageTip pageTip) {
-        return PageTipResponse.builder()
+    public static PageTipResponseDto fromEntity(PageTip pageTip) {
+        return PageTipResponseDto.builder()
                 .id(pageTip.getId())
                 .pageId(pageTip.getPage().getId())
                 .term(pageTip.getTerm())

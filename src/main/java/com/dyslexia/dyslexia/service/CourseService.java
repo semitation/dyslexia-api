@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.service;
 
 import com.dyslexia.dyslexia.dto.CourseDto;
-import com.dyslexia.dyslexia.dto.CourseReqDto;
+import com.dyslexia.dyslexia.dto.CourseRequestDto;
 import com.dyslexia.dyslexia.entity.Course;
 import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.mapper.CourseMapper;
@@ -23,7 +23,7 @@ public class CourseService {
   private final CourseMapper courseMapper;
 
   @Transactional
-  public CourseDto saveCourse(CourseReqDto dto) {
+  public CourseDto saveCourse(CourseRequestDto dto) {
     Teacher teacher = teacherRepository.findById(dto.getTeacherId())
         .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
 

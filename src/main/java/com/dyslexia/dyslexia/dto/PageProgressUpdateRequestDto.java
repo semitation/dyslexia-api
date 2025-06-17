@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Schema(description = "페이지 진행 상태 업데이트 요청 DTO")
-public class PageProgressUpdateRequest {
+public class PageProgressUpdateRequestDto {
 
     @Schema(description = "페이지 ID", example = "1")
     private Long pageId;

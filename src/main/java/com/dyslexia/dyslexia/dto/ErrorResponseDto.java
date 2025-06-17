@@ -7,7 +7,7 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 @Schema(description = "에러 응답 DTO")
-public class ErrorResponse {
+public class ErrorResponseDto {
     @Schema(description = "에러 코드", example = "401")
     private final int code;
 
