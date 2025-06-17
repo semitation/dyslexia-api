@@ -33,6 +33,8 @@ public class Guardian {
 
   private String organization;
 
+  private String email;
+
   private String profileImageUrl;
 
   private GuardianRole guardianRole;
