@@ -39,8 +39,8 @@ public class Student {
   private String name;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "teacherId")
-  private Teacher teacher;
+  @JoinColumn(name = "guardianId")
+  private Guardian guardian;
 
   @Enumerated(EnumType.STRING)
   private Grade grade;
@@ -79,13 +79,13 @@ public class Student {
   private List<Interest> interests = new ArrayList<>();
 
   @Builder
-  public Student(String clientId, String name, Teacher teacher, Grade grade, String type, String state,
+  public Student(String clientId, String name, Guardian guardian, Grade grade, String type, String state,
       String profileImageUrl, List<Interest> interests, Integer defaultFontSize, Float defaultLineSpacing,
       Float defaultLetterSpacing, ColorScheme defaultColorScheme, Boolean defaultTextToSpeechEnabled,
       Boolean defaultReadingHighlightEnabled, String defaultBackgroundColor, String defaultTextColor) {
     this.clientId = clientId;
     this.name = name;
-    this.teacher = teacher;
+    this.guardian = guardian;
     this.grade = grade;
     this.type = type;
     this.state = state;
@@ -101,11 +101,11 @@ public class Student {
     this.defaultTextColor = defaultTextColor != null ? defaultTextColor : "#000000";
   }
 
-  public void setTeacher(Teacher teacher) {
-    this.teacher = teacher;
+  public void setGuardian(Guardian guardian) {
+    this.guardian = guardian;
 
-    if (teacher != null && !teacher.getStudents().contains(this)) {
-      teacher.getStudents().add(this);
+    if (guardian != null && !guardian.getStudents().contains(this)) {
+      guardian.getStudents().add(this);
     }
   }
 

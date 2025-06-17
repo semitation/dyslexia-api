@@ -28,8 +28,8 @@ public class Course {
   private Long id;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "teacherId")
-  private Teacher teacher;
+  @JoinColumn(name = "guardianId")
+  private Guardian guardian;
 
   private String subjectPath;
 
@@ -47,9 +47,9 @@ public class Course {
   private String state;
 
   @Builder
-  public Course(Teacher teacher, String subjectPath, String title, String type, Grade grade,
+  public Course(Guardian guardian, String subjectPath, String title, String type, Grade grade,
       String state) {
-    this.teacher = teacher;
+    this.guardian = guardian;
     this.subjectPath = subjectPath;
     this.title = title;
     this.type = type;

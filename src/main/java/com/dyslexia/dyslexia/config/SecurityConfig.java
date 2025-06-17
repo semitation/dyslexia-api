@@ -41,7 +41,7 @@ public class SecurityConfig {
                 ).permitAll()
                 .anyRequest().permitAll()
 //                .requestMatchers("/students/**").hasRole("STUDENT")
-//                .requestMatchers("/teachers/**").hasRole("TEACHER")
+//                .requestMatchers("/guardians/**").hasRole("GUARDIAN")
 //                .anyRequest().authenticated()
                 //테스트할 땐 인증 없이 할 수 있도록 잠시 주석처리 해둘게요
             );

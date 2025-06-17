@@ -29,7 +29,7 @@ public class StudentDocumentAssignment {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_by", nullable = false)
-    private Teacher assignedBy;
+    private Guardian assignedBy;
 
     @Column(name = "current_page_number")
     private Integer currentPageNumber = 1;
@@ -57,7 +57,7 @@ public class StudentDocumentAssignment {
     private LocalDateTime updatedAt;
 
     @Builder
-    public StudentDocumentAssignment(Student student, Document document, Teacher assignedBy,
+    public StudentDocumentAssignment(Student student, Document document, Guardian assignedBy,
                                     Integer currentPageNumber, LocalDateTime dueDate,
                                     CompletionStatus completionStatus, Integer totalLearningTime,
                                     LocalDateTime assignedAt, String notes) {
@@ -98,7 +98,7 @@ public class StudentDocumentAssignment {
         this.dueDate = dueDate;
     }
     
-    public Teacher getTeacher() {
+    public Guardian getGuardian() {
         return this.assignedBy;
     }
 } 

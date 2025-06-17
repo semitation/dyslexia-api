@@ -3,7 +3,7 @@ package com.dyslexia.dyslexia.repository;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.StudentDocumentAssignment;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -23,9 +23,9 @@ public interface StudentDocumentAssignmentRepository extends JpaRepository<Stude
     
     Optional<StudentDocumentAssignment> findByStudentIdAndDocumentId(Long studentId, Long documentId);
     
-    List<StudentDocumentAssignment> findByAssignedBy(Teacher teacher);
+    List<StudentDocumentAssignment> findByAssignedBy(Guardian guardian);
     
-    List<StudentDocumentAssignment> findByAssignedById(Long teacherId);
+    List<StudentDocumentAssignment> findByAssignedById(Long guardianId);
 
-    List<StudentDocumentAssignment> findByAssignedByIdAndStudentId(Long teacherId, Long studentId);
+    List<StudentDocumentAssignment> findByAssignedByIdAndStudentId(Long guardianId, Long studentId);
 } 

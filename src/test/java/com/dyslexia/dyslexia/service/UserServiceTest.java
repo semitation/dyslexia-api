@@ -12,14 +12,14 @@ import com.dyslexia.dyslexia.dto.SignUpRequestDto;
 import com.dyslexia.dyslexia.dto.SignUpResponseDto;
 import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Student;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.UserType;
 import com.dyslexia.dyslexia.exception.UserAlreadyExistsException;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
-import com.dyslexia.dyslexia.mapper.TeacherMapper;
+import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import java.util.Arrays;
 import java.util.List;
@@ -36,7 +36,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class UserServiceTest {
 
     @Mock
-    private TeacherRepository teacherRepository;
+    private GuardianRepository guardianRepository;
 
     @Mock
     private StudentRepository studentRepository;
@@ -45,7 +45,7 @@ class UserServiceTest {
     private InterestRepository interestRepository;
 
     @Mock
-    private TeacherMapper teacherMapper;
+    private GuardianMapper guardianMapper;
 
     @Mock
     private StudentMapper studentMapper;
@@ -56,15 +56,15 @@ class UserServiceTest {
     @InjectMocks
     private UserService userService;
 
-    private SignUpRequestDto teacherDto;
+    private SignUpRequestDto guardianDto;
     private SignUpRequestDto studentDto;
 
     @BeforeEach
     void setUp() {
-        teacherDto = SignUpRequestDto.builder()
-            .userType(UserType.TEACHER)
-            .clientId("teacher123")
-            .name("테스트교사")
+        guardianDto = SignUpRequestDto.builder()
+            .userType(UserType.GUARDIAN)
+            .clientId("guardian123")
+            .name("테스트보호자")
             .build();
 
         studentDto = SignUpRequestDto.builder()
@@ -76,30 +76,30 @@ class UserServiceTest {
     }
 
     @Test
-    void 교사_회원가입_성공() {
+    void 보호자_회원가입_성공() {
 
         //Given
-        Teacher teacher = Teacher.builder()
-            .clientId("teacher123")
-            .name("테스트교사")
+        Guardian guardian = Guardian.builder()
+            .clientId("guardian123")
+            .name("테스트보호자")
             .build();
-        ReflectionTestUtils.setField(teacher, "id", 1L);
+        ReflectionTestUtils.setField(guardian, "id", 1L);
 
-        when(teacherRepository.existsByClientId(anyString())).thenReturn(false);
-        when(teacherMapper.toEntity((SignUpRequestDto) any())).thenReturn(teacher);
-        when(teacherRepository.save(any())).thenReturn(teacher);
+        when(guardianRepository.existsByClientId(anyString())).thenReturn(false);
+        when(guardianMapper.toEntity((SignUpRequestDto) any())).thenReturn(guardian);
+        when(guardianRepository.save(any())).thenReturn(guardian);
         when(jwtTokenProvider.createAccessToken(anyString(), anyString())).thenReturn("테스트 액세스토큰");
         when(jwtTokenProvider.createRefreshToken(anyString())).thenReturn("테스트 리프레쉬토큰");
 
         //When
-        SignUpResponseDto response = userService.signUp(teacherDto);
+        SignUpResponseDto response = userService.signUp(guardianDto);
 
         //Then
         assertThat(response).isNotNull();
         assertThat(response.getId()).isEqualTo(1L);
-        assertThat(response.getName()).isEqualTo("테스트교사");
-        assertThat(response.getUserType()).isEqualTo(UserType.TEACHER);
-        verify(teacherRepository).save(any());
+        assertThat(response.getName()).isEqualTo("테스트보호자");
+        assertThat(response.getUserType()).isEqualTo(UserType.GUARDIAN);
+        verify(guardianRepository).save(any());
     }
 
     @Test
@@ -139,14 +139,14 @@ class UserServiceTest {
     }
 
     @Test
-    void 교사_회원가입_실패() {
+    void 보호자_회원가입_실패() {
 
         //Given
-        when(teacherRepository.existsByClientId(anyString())).thenReturn(true);
+        when(guardianRepository.existsByClientId(anyString())).thenReturn(true);
 
         //When & Then
         UserAlreadyExistsException exception = assertThrows(UserAlreadyExistsException.class,
-            () -> userService.signUp(teacherDto));
+            () -> userService.signUp(guardianDto));
 
         Assertions.assertThat(exception.getMessage()).contains("이미 가입된");
     }

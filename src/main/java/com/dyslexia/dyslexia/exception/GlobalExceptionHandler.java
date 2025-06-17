@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.exception;
 
 import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
-import com.dyslexia.dyslexia.exception.notfound.TeacherNotFoundException;
+import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.validation.FieldError;
@@ -60,10 +60,10 @@ public class GlobalExceptionHandler {
     return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "알 수 없는 오류가 발생했습니다.");
   }
 
-  @ExceptionHandler(TeacherNotFoundException.class)
-  public ResponseEntity<ApiErrorResponse> handleTeacherNotFoundException(
-      TeacherNotFoundException ex) {
-    log.warn("Teacher not found: {}", ex.getMessage());
+  @ExceptionHandler(GuardianNotFoundException.class)
+  public ResponseEntity<ApiErrorResponse> handleGuardianNotFoundException(
+      GuardianNotFoundException ex) {
+    log.warn("Guardian not found: {}", ex.getMessage());
     return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
   }
 
@@ -77,7 +77,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(UserAlreadyExistsException.class)
   public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(
       UserAlreadyExistsException ex) {
-    log.warn("Teacher already exists: {}", ex.getMessage());
+    log.warn("Guardian already exists: {}", ex.getMessage());
     return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
   }
 }

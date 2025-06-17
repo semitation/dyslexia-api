@@ -4,17 +4,17 @@ import com.dyslexia.dyslexia.dto.SignUpRequestDto;
 import com.dyslexia.dyslexia.dto.SignUpResponseDto;
 import com.dyslexia.dyslexia.dto.UserInfoDto;
 import com.dyslexia.dyslexia.dto.StudentInfoDto;
-import com.dyslexia.dyslexia.dto.TeacherInfoDto;
+import com.dyslexia.dyslexia.dto.GuardianInfoDto;
 import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Student;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.UserType;
 import com.dyslexia.dyslexia.exception.UserAlreadyExistsException;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
-import com.dyslexia.dyslexia.mapper.TeacherMapper;
+import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -25,43 +25,43 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class UserService {
 
-    private final TeacherRepository teacherRepository;
+    private final GuardianRepository guardianRepository;
     private final StudentRepository studentRepository;
     private final InterestRepository interestRepository;
-    private final TeacherMapper teacherMapper;
+    private final GuardianMapper guardianMapper;
     private final StudentMapper studentMapper;
     private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
     public SignUpResponseDto signUp(SignUpRequestDto dto) {
 
-        if (UserType.TEACHER == dto.getUserType()) {
-            return registerTeacher(dto);
+        if (UserType.GUARDIAN == dto.getUserType()) {
+            return registerGuardian(dto);
         } else {
             return registerStudent(dto);
         }
     }
 
-    private SignUpResponseDto registerTeacher(SignUpRequestDto dto) {
-        if (teacherRepository.existsByClientId(dto.getClientId())) {
+    private SignUpResponseDto registerGuardian(SignUpRequestDto dto) {
+        if (guardianRepository.existsByClientId(dto.getClientId())) {
             throw new UserAlreadyExistsException("이미 가입된 사용자입니다.");
         }
 
-        Teacher teacher = teacherRepository.save(teacherMapper.toEntity(dto));
+        Guardian guardian = guardianRepository.save(guardianMapper.toEntity(dto));
 
-        teacher.generateMatchCode();
+        guardian.generateMatchCode();
 
-        while (teacherRepository.existsByMatchCodeAndIdNot(teacher.getMatchCode(),
-            teacher.getId())) {
-            teacher.generateMatchCode();
+        while (guardianRepository.existsByMatchCodeAndIdNot(guardian.getMatchCode(),
+            guardian.getId())) {
+            guardian.generateMatchCode();
         }
 
-        String accessToken = jwtTokenProvider.createAccessToken(teacher.getClientId(),
-            UserType.TEACHER.name());
-        String refreshToken = jwtTokenProvider.createRefreshToken(teacher.getClientId());
+        String accessToken = jwtTokenProvider.createAccessToken(guardian.getClientId(),
+            UserType.GUARDIAN.name());
+        String refreshToken = jwtTokenProvider.createRefreshToken(guardian.getClientId());
 
-        return SignUpResponseDto.builder().id(teacher.getId()).name(teacher.getName())
-            .userType(UserType.TEACHER).accessToken(accessToken).refreshToken(refreshToken).build();
+        return SignUpResponseDto.builder().id(guardian.getId()).name(guardian.getName())
+            .userType(UserType.GUARDIAN).accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
     private SignUpResponseDto registerStudent(SignUpRequestDto dto) {
@@ -96,10 +96,10 @@ public class UserService {
                     .orElseThrow(() -> new RuntimeException("Student not found"));
                 yield new StudentInfoDto(student);
             }
-            case TEACHER -> {
-                Teacher teacher = teacherRepository.findByClientId(clientId)
-                    .orElseThrow(() -> new RuntimeException("Teacher not found"));
-                yield new TeacherInfoDto(teacher);
+            case GUARDIAN -> {
+                Guardian guardian = guardianRepository.findByClientId(clientId)
+                    .orElseThrow(() -> new RuntimeException("Guardian not found"));
+                yield new GuardianInfoDto(guardian);
             }
             default -> throw new RuntimeException("Invalid user type");
         };

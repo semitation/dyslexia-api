@@ -6,14 +6,14 @@ import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.PageTip;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.util.DocumentProcessHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,7 +49,7 @@ public class DocumentProcessService {
     private final PageRepository pageRepository;
     private final PageTipRepository pageTipRepository;
     private final PageImageRepository pageImageRepository;
-    private final TeacherRepository teacherRepository;
+    private final GuardianRepository guardianRepository;
     private final PdfParserService pdfParserService;
     private final AIPromptService aiPromptService;
     private final StorageService storageService;
@@ -67,9 +67,9 @@ public class DocumentProcessService {
 
 
     @Transactional
-    public Document uploadDocument(Long teacherId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
-        Teacher teacher = teacherRepository.findById(teacherId)
-            .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+    public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
+        Guardian guardian = guardianRepository.findById(guardianId)
+            .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
 
         String originalFilename = file.getOriginalFilename();
         String fileExtension = "";
@@ -77,11 +77,11 @@ public class DocumentProcessService {
             fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
         
-        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 교사ID: {}", 
-                originalFilename, teacherId);
+        log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자ID: {}", 
+                originalFilename, guardianId);
 
         Document document = Document.builder()
-            .teacher(teacher)
+            .guardian(guardian)
             .title(title)
             .originalFilename(originalFilename)
             .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
@@ -96,7 +96,7 @@ public class DocumentProcessService {
         
         String uniqueFilename = UUID.randomUUID().toString() + fileExtension;
         
-        String filePath = storageService.store(file, uniqueFilename, teacherId, document.getId());
+        String filePath = storageService.store(file, uniqueFilename, guardianId, document.getId());
         log.info("파일 저장 경로: {}", filePath);
 
         document.setFilePath(filePath);
@@ -286,7 +286,7 @@ public class DocumentProcessService {
             // ThreadLocal에 문서 정보 설정
             DocumentProcessHolder.setDocumentId(document.getId());
             DocumentProcessHolder.setPdfName(document.getOriginalFilename());
-            DocumentProcessHolder.setTeacherId(document.getTeacher().getId().toString());
+            DocumentProcessHolder.setGuardianId(document.getGuardian().getId().toString());
             DocumentProcessHolder.setPdfFolderPath(folderPath);
             DocumentProcessHolder.setPageNumber(pageNumber); // 페이지 번호 설정 추가
             

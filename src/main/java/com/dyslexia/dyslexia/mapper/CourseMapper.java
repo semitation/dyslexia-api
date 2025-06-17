@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = {GradeMapper.class})
 public interface CourseMapper {
 
-  @Mapping(source = "teacher.id", target = "teacherId")
+  @Mapping(source = "guardian.id", target = "guardianId")
   @Mapping(source = "grade", target = "grade")
   CourseDto toDto(Course entity);
 }

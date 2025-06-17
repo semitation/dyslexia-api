@@ -49,7 +49,7 @@ public class StudentController {
     return ResponseEntity.ok(studentService.getByClientId(clientId));
   }
 
-  @Operation(summary = "매칭 코드로 교사 매칭", description = "매칭 코드를 사용하여 학생과 교사를 연결합니다.")
+  @Operation(summary = "매칭 코드로 보호자 매칭", description = "매칭 코드를 사용하여 학생과 보호자를 연결합니다.")
   @ApiResponses(value = {
     @ApiResponse(responseCode = "200", description = "매칭 성공",
         content = @Content(schema = @Schema(implementation = MatchResponseDto.class))),

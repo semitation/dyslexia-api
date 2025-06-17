@@ -11,12 +11,12 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = {GradeMapper.class, InterestMapper.class})
 public interface StudentMapper {
 
-  @Mapping(source = "teacher.id", target = "teacherId")
+  @Mapping(source = "guardian.id", target = "guardianId")
   @Mapping(source = "grade", target = "grade")
   @Mapping(source = "interests", target = "interests")
   StudentDto toDto(Student entity);
 
-  @Mapping(target = "teacher", ignore = true)
+  @Mapping(target = "guardian", ignore = true)
   @Mapping(target = "state", ignore = true)
   @Mapping(target = "profileImageUrl", ignore = true)
   @Mapping(target = "interests", ignore = true)

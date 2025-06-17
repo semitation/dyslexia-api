@@ -11,7 +11,7 @@ import lombok.Setter;
 public class StudentReqDto {
 
   private String clientId;
-  private Long teacherId;
+  private Long guardianId;
   private String gradeLabel;
   private String type;
   private String state;

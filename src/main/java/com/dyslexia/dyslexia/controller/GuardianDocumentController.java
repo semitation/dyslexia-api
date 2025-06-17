@@ -7,11 +7,11 @@ import com.dyslexia.dyslexia.dto.StudentDocumentListResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.StudentDocumentAssignment;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.StudentDocumentAssignmentRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,31 +28,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Tag(name = "TeacherDocument", description = "선생님 문서 관리 API")
+@Tag(name = "GuardianDocument", description = "보호자 문서 관리 API")
 @RestController
-@RequestMapping("teacher/documents")
+@RequestMapping("guardian/documents")
 @RequiredArgsConstructor
 @Slf4j
-public class TeacherDocumentController {
+public class GuardianDocumentController {
 
     private final DocumentRepository documentRepository;
-    private final TeacherRepository teacherRepository;
+    private final GuardianRepository guardianRepository;
     private final StudentRepository studentRepository;
     private final StudentDocumentAssignmentRepository assignmentRepository;
 
-    @Operation(summary = "선생님이 업로드한 문서 목록 조회", description = "선생님이 업로드한 모든 문서 목록을 조회합니다.")
+    @Operation(summary = "보호자가 업로드한 문서 목록 조회", description = "보호자가 업로드한 모든 문서 목록을 조회합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "조회 성공", 
                      content = @Content(schema = @Schema(implementation = StudentDocumentListResponseDto.class))),
-        @ApiResponse(responseCode = "404", description = "선생님을 찾을 수 없음"),
+        @ApiResponse(responseCode = "404", description = "보호자를 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @GetMapping("/{teacherId}")
-    public ResponseEntity<StudentDocumentListResponseDto> getTeacherDocuments(
-            @Parameter(description = "선생님 ID", required = true) 
-            @PathVariable("teacherId") Long teacherId) {
+    @GetMapping("/{guardianId}")
+    public ResponseEntity<StudentDocumentListResponseDto> getGuardianDocuments(
+            @Parameter(description = "보호자 ID", required = true) 
+            @PathVariable("guardianId") Long guardianId) {
         
-        log.info("선생님 ID: {}의 문서 목록 조회 요청", teacherId);
+        log.info("보호자 ID: {}의 문서 목록 조회 요청", guardianId);
         
         try {
             List<Document> documents = documentRepository.findAllByOrderByCreatedAtDesc();
@@ -70,7 +70,7 @@ public class TeacherDocumentController {
             List<DocumentDto> documentDtos = documents.stream()
                 .map(document -> DocumentDto.builder()
                     .id(document.getId())
-                    .teacherId(document.getTeacher().getId())
+                    .guardianId(document.getGuardian().getId())
                     .title(document.getTitle())
                     .originalFilename(document.getOriginalFilename())
                     .fileSize(document.getFileSize())
@@ -92,7 +92,7 @@ public class TeacherDocumentController {
             );
             
         } catch (Exception e) {
-            log.error("선생님 문서 목록 조회 중 오류 발생", e);
+            log.error("보호자 문서 목록 조회 중 오류 발생", e);
             return ResponseEntity.status(500).body(
                 StudentDocumentListResponseDto.builder()
                     .success(false)
@@ -102,24 +102,24 @@ public class TeacherDocumentController {
         }
     }
     
-    @Operation(summary = "학생에게 문서 할당", description = "선생님이 학생에게 문서를 할당합니다.")
+    @Operation(summary = "학생에게 문서 할당", description = "보호자가 학생에게 문서를 할당합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "할당 성공", 
                      content = @Content(schema = @Schema(implementation = ResponseDto.class))),
-        @ApiResponse(responseCode = "404", description = "선생님, 학생 또는 문서를 찾을 수 없음"),
+        @ApiResponse(responseCode = "404", description = "보호자, 학생 또는 문서를 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PostMapping("/assign")
     public ResponseEntity<ResponseDto> assignDocumentToStudent(
             @RequestBody DocumentAssignmentRequest request) {
         
-        log.info("문서 할당 요청: 선생님 ID: {}, 학생 ID: {}, 문서 ID: {}", 
-                request.getTeacherId(), request.getStudentId(), request.getDocumentId());
+        log.info("문서 할당 요청: 보호자 ID: {}, 학생 ID: {}, 문서 ID: {}", 
+                request.getGuardianId(), request.getStudentId(), request.getDocumentId());
         
         try {
-            // 선생님 존재 여부 확인
-            Teacher teacher = teacherRepository.findById(request.getTeacherId())
-                .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+            // 보호자 존재 여부 확인
+            Guardian guardian = guardianRepository.findById(request.getGuardianId())
+                .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
             
             // 학생 존재 여부 확인
             Student student = studentRepository.findById(request.getStudentId())
@@ -146,7 +146,7 @@ public class TeacherDocumentController {
             StudentDocumentAssignment assignment = StudentDocumentAssignment.builder()
                 .student(student)
                 .document(document)
-                .assignedBy(teacher)
+                .assignedBy(guardian)
                 .assignedAt(LocalDateTime.now())
                 .dueDate(request.getDueDate())
                 .notes(request.getNotes())
@@ -181,17 +181,17 @@ public class TeacherDocumentController {
         }
     }
     
-    @Operation(summary = "학생 문서 할당 취소", description = "선생님이 학생에게 할당한 문서를 취소합니다.")
+    @Operation(summary = "학생 문서 할당 취소", description = "보호자가 학생에게 할당한 문서를 취소합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "취소 성공", 
                      content = @Content(schema = @Schema(implementation = ResponseDto.class))),
         @ApiResponse(responseCode = "404", description = "할당 정보를 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @DeleteMapping("/assign/{teacherId}/{studentId}/{documentId}")
+    @DeleteMapping("/assign/{guardianId}/{studentId}/{documentId}")
     public ResponseEntity<ResponseDto> unassignDocumentFromStudent(
-            @Parameter(description = "선생님 ID", required = true) 
-            @PathVariable Long teacherId,
+            @Parameter(description = "보호자 ID", required = true) 
+            @PathVariable Long guardianId,
             
             @Parameter(description = "학생 ID", required = true) 
             @PathVariable Long studentId,
@@ -199,8 +199,8 @@ public class TeacherDocumentController {
             @Parameter(description = "문서 ID", required = true) 
             @PathVariable Long documentId) {
         
-        log.info("문서 할당 취소 요청: 선생님 ID: {}, 학생 ID: {}, 문서 ID: {}", 
-                teacherId, studentId, documentId);
+        log.info("문서 할당 취소 요청: 보호자 ID: {}, 학생 ID: {}, 문서 ID: {}", 
+                guardianId, studentId, documentId);
         
         try {
             // 할당 정보 조회
@@ -208,12 +208,12 @@ public class TeacherDocumentController {
                 .findByStudentIdAndDocumentId(studentId, documentId)
                 .orElseThrow(() -> new IllegalArgumentException("할당된 문서를 찾을 수 없습니다."));
             
-            // 할당한 선생님인지 확인
-            if (!assignment.getTeacher().getId().equals(teacherId)) {
+            // 할당한 보호자인지 확인
+            if (!assignment.getGuardian().getId().equals(guardianId)) {
                 return ResponseEntity.status(403).body(
                     ResponseDto.builder()
                         .success(false)
-                        .message("이 문서를 할당한 선생님만 취소할 수 있습니다.")
+                        .message("이 문서를 할당한 보호자만 취소할 수 있습니다.")
                         .build()
                 );
             }
@@ -247,26 +247,26 @@ public class TeacherDocumentController {
         }
     }
     
-    @Operation(summary = "선생님의 학생별 할당 문서 목록 조회", description = "선생님이 특정 학생에게 할당한 문서 목록을 조회합니다.")
+    @Operation(summary = "보호자의 학생별 할당 문서 목록 조회", description = "보호자가 특정 학생에게 할당한 문서 목록을 조회합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "조회 성공", 
                      content = @Content(schema = @Schema(implementation = StudentDocumentListResponseDto.class))),
-        @ApiResponse(responseCode = "404", description = "선생님 또는 학생을 찾을 수 없음"),
+        @ApiResponse(responseCode = "404", description = "보호자 또는 학생을 찾을 수 없음"),
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
-    @GetMapping("/{teacherId}/student/{studentId}")
+    @GetMapping("/{guardianId}/student/{studentId}")
     public ResponseEntity<StudentDocumentListResponseDto> getAssignedDocumentsForStudent(
-            @Parameter(description = "선생님 ID", required = true) 
-            @PathVariable Long teacherId,
+            @Parameter(description = "보호자 ID", required = true) 
+            @PathVariable Long guardianId,
             
             @Parameter(description = "학생 ID", required = true) 
             @PathVariable Long studentId) {
         
-        log.info("선생님 ID: {}, 학생 ID: {}의 할당된 문서 목록 조회 요청", teacherId, studentId);
+        log.info("보호자 ID: {}, 학생 ID: {}의 할당된 문서 목록 조회 요청", guardianId, studentId);
         
         try {
             List<StudentDocumentAssignment> assignments = assignmentRepository
-                .findByAssignedByIdAndStudentId(teacherId, studentId);
+                .findByAssignedByIdAndStudentId(guardianId, studentId);
             
             if (assignments.isEmpty()) {
                 return ResponseEntity.ok(
@@ -283,7 +283,7 @@ public class TeacherDocumentController {
                     Document document = assignment.getDocument();
                     return DocumentDto.builder()
                         .id(document.getId())
-                        .teacherId(document.getTeacher().getId())
+                        .guardianId(document.getGuardian().getId())
                         .title(document.getTitle())
                         .originalFilename(document.getOriginalFilename())
                         .fileSize(document.getFileSize())

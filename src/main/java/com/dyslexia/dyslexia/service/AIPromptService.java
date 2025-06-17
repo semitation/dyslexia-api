@@ -577,16 +577,16 @@ public class AIPromptService {
 
   private String saveImageToLocalFile(String imageUrl, String blockId) {
     try {
-      String teacherId = DocumentProcessHolder.getTeacherId();
+      String guardianId = DocumentProcessHolder.getGuardianId();
       Long documentId = DocumentProcessHolder.getDocumentId();
       Integer pageNumber = DocumentProcessHolder.getPageNumber();
       
-      if (teacherId == null || teacherId.isEmpty() || documentId == null) {
-        log.error("이미지 저장 실패: teacherId({}) 또는 documentId({})가 없습니다.", teacherId, documentId);
-        throw new IllegalStateException("teacherId와 documentId가 필요합니다.");
+      if (guardianId == null || guardianId.isEmpty() || documentId == null) {
+        log.error("이미지 저장 실패: guardianId({}) 또는 documentId({})가 없습니다.", guardianId, documentId);
+        throw new IllegalStateException("guardianId와 documentId가 필요합니다.");
       }
       
-      String saveDirectory = Paths.get(uploadDir, teacherId, documentId.toString(), pageNumber.toString()).toString();
+      String saveDirectory = Paths.get(uploadDir, guardianId, documentId.toString(), pageNumber.toString()).toString();
       Path directoryPath = Paths.get(saveDirectory);
       
       log.info("이미지 저장 경로: {}", saveDirectory);

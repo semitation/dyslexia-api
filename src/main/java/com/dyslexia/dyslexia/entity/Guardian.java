@@ -17,10 +17,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "teachers")
+@Table(name = "guardians")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Teacher {
+public class Guardian {
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,11 +37,11 @@ public class Teacher {
   @Column(unique = true)
   private String matchCode;
 
-  @OneToMany(mappedBy = "teacher", cascade = CascadeType.ALL, orphanRemoval = false)
+  @OneToMany(mappedBy = "guardian", cascade = CascadeType.ALL, orphanRemoval = false)
   private List<Student> students = new ArrayList<>();
 
   @Builder
-  public Teacher(String clientId, String name, String organization, String profileImageUrl) {
+  public Guardian(String clientId, String name, String organization, String profileImageUrl) {
     this.clientId = clientId;
     this.name = name;
     this.organization = organization;
@@ -63,8 +63,8 @@ public class Teacher {
   public void addStudent(Student student) {
     this.students.add(student);
 
-    if (student.getTeacher() != this) {
-      student.setTeacher(this);
+    if (student.getGuardian() != this) {
+      student.setGuardian(this);
     }
   }
 }

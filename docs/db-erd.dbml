@@ -1,10 +1,10 @@
 // Use DBML to define your database structure
 // Docs: https://dbml.dbdiagram.io/docs
 
-Table teachers {
-  id bigint [pk, increment, note: "PK, 교사 ID"]
+Table guardians {
+  id bigint [pk, increment, note: "PK, 보호자 ID"]
   client_id varchar [note: "외부 시스템 연동용 식별자"]
-  name varchar [note: "교사 이름"]
+  name varchar [note: "보호자 이름"]
   organization varchar [note: "소속 기관"]
   profile_image_url varchar [note: "프로필 이미지 URL"]
   match_code varchar [unique, note: "학생 매칭 코드"]
@@ -15,7 +15,7 @@ Table students {
   id bigint [pk, increment, note: "PK, 학생 ID"]
   client_id varchar [note: "외부 시스템 연동용 식별자"]
   name varchar [note: "학생 이름"]
-  teacher_id bigint [ref: > teachers.id, note: "FK, 담당 교사"]
+  guardian_id bigint [ref: > guardians.id, note: "FK, 담당 보호자"]
   grade varchar [note: "학년(ENUM)"]
   type varchar [note: "학생 유형"]
   state varchar [note: "상태"]
@@ -44,7 +44,7 @@ Table student_interest {
 
 Table documents {
   id bigint [pk, increment, note: "PK, 문서 ID"]
-  teacher_id bigint [ref: > teachers.id, note: "FK, 등록 교사"]
+  guardian_id bigint [ref: > guardians.id, note: "FK, 등록 보호자"]
   title varchar [note: "문서 제목"]
   original_filename varchar [note: "원본 파일명"]
   file_path varchar [note: "파일 경로"]
@@ -107,7 +107,7 @@ Table student_document_assignments {
   id bigint [pk, increment, note: "PK, 할당 ID"]
   student_id bigint [ref: > students.id, note: "FK, 학생"]
   document_id bigint [ref: > documents.id, note: "FK, 문서"]
-  assigned_by bigint [ref: > teachers.id, note: "FK, 할당 교사"]
+  assigned_by bigint [ref: > guardians.id, note: "FK, 할당 보호자"]
   current_page_number int [note: "현재 페이지"]
   assigned_at timestamp [note: "할당일"]
   due_date timestamp [note: "마감일"]

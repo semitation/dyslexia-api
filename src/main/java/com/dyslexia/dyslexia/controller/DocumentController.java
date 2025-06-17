@@ -33,7 +33,7 @@ public class DocumentController {
 
     private final DocumentProcessService documentProcessService;
 
-    @Operation(summary = "PDF 문서 업로드", description = "선생님이 PDF 문서를 업로드하고 처리를 시작합니다.")
+    @Operation(summary = "PDF 문서 업로드", description = "보호자가 PDF 문서를 업로드하고 처리를 시작합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "업로드 성공", 
                      content = @Content(schema = @Schema(implementation = DocumentResponseDto.class))),
@@ -42,8 +42,8 @@ public class DocumentController {
     })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentResponseDto> uploadDocument(
-            @Parameter(description = "선생님 ID", required = true) 
-            @RequestParam("teacherId") Long teacherId,
+            @Parameter(description = "보호자 ID", required = true) 
+            @RequestParam("guardianId") Long guardianId,
             
             @Parameter(description = "PDF 파일", required = true) 
             @RequestParam("file") MultipartFile file,
@@ -58,7 +58,7 @@ public class DocumentController {
             @RequestParam(value = "subjectPath", required = false) String subjectPath
     ) {
         try {
-            log.info("문서 업로드 요청: 선생님 ID: {}, 제목: {}, 학년: {}", teacherId, title, grade);
+            log.info("문서 업로드 요청: 보호자 ID: {}, 제목: {}, 학년: {}", guardianId, title, grade);
             
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
@@ -70,7 +70,7 @@ public class DocumentController {
                 );
             }
             
-            Document document = documentProcessService.uploadDocument(teacherId, file, title, grade, subjectPath);
+            Document document = documentProcessService.uploadDocument(guardianId, file, title, grade, subjectPath);
             
             DocumentResponseDto responseDto = DocumentResponseDto.builder()
                 .success(true)
@@ -102,7 +102,7 @@ public class DocumentController {
     private DocumentDto mapToDto(Document document) {
         return DocumentDto.builder()
             .id(document.getId())
-            .teacherId(document.getTeacher().getId())
+            .guardianId(document.getGuardian().getId())
             .title(document.getTitle())
             .originalFilename(document.getOriginalFilename())
             .fileSize(document.getFileSize())

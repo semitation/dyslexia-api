@@ -10,7 +10,7 @@ public interface CourseInfoMapper {
 
   @Mapping(source = "course.id", target = "courseId")
   @Mapping(source = "student.id", target = "studentId")
-  @Mapping(source = "teacher.id", target = "teacherId")
+  @Mapping(source = "guardian.id", target = "guardianId")
   CourseInfoDto toDto(CourseInfo entity);
 
 }

@@ -3,7 +3,7 @@ package com.dyslexia.dyslexia.util;
 public class DocumentProcessHolder {
     private static final ThreadLocal<Long> documentId = new ThreadLocal<>();
     private static final ThreadLocal<String> pdfName = new ThreadLocal<>();
-    private static final ThreadLocal<String> teacherId = new ThreadLocal<>();
+    private static final ThreadLocal<String> guardianId = new ThreadLocal<>();
     private static final ThreadLocal<String> pdfFolderPath = new ThreadLocal<>();
     private static final ThreadLocal<Integer> pageNumber = new ThreadLocal<>();
 
@@ -23,12 +23,12 @@ public class DocumentProcessHolder {
         return pdfName.get();
     }
 
-    public static void setTeacherId(String id) {
-        teacherId.set(id);
+    public static void setGuardianId(String id) {
+        guardianId.set(id);
     }
 
-    public static String getTeacherId() {
-        return teacherId.get();
+    public static String getGuardianId() {
+        return guardianId.get();
     }
     
     public static void setPdfFolderPath(String path) {
@@ -50,7 +50,7 @@ public class DocumentProcessHolder {
     public static void clear() {
         documentId.remove();
         pdfName.remove();
-        teacherId.remove();
+        guardianId.remove();
         pdfFolderPath.remove();
         pageNumber.remove();
     }

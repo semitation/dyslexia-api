@@ -5,7 +5,7 @@ import lombok.Data;
 
 @Data
 @Builder
-public class TeacherDto {
+public class GuardianDto {
 
   private Long id;
   private String clientId;

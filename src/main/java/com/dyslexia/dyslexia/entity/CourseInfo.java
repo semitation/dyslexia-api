@@ -31,8 +31,8 @@ public class CourseInfo {
   private Student student;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "teacherId")
-  private Teacher teacher;
+  @JoinColumn(name = "guardianId")
+  private Guardian guardian;
 
   private Integer learningTime;
 
@@ -41,11 +41,11 @@ public class CourseInfo {
   private Integer maxPage;
 
   @Builder
-  public CourseInfo(Course course, Student student, Teacher teacher, Integer learningTime,
+  public CourseInfo(Course course, Student student, Guardian guardian, Integer learningTime,
       Integer page, Integer maxPage) {
     this.course = course;
     this.student = student;
-    this.teacher = teacher;
+    this.guardian = guardian;
     this.learningTime = learningTime;
     this.page = page;
     this.maxPage = maxPage;

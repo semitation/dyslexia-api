@@ -3,7 +3,7 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.AuthResponseDto;
 import com.dyslexia.dyslexia.enums.UserType;
 import com.dyslexia.dyslexia.repository.StudentRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +28,7 @@ public class KakaoService {
     private final ObjectMapper objectMapper;
     private final JwtTokenProvider jwtTokenProvider;
     private final StudentRepository studentRepository;
-    private final TeacherRepository teacherRepository;
+    private final GuardianRepository guardianRepository;
 
     @Value("${kakao.client.id}")
     private String clientId;
@@ -132,8 +132,8 @@ public class KakaoService {
         if (studentRepository.findByClientId(clientId).isPresent()) {
             return UserType.STUDENT;
         }
-        if (teacherRepository.findByClientId(clientId).isPresent()) {
-            return UserType.TEACHER;
+        if (guardianRepository.findByClientId(clientId).isPresent()) {
+            return UserType.GUARDIAN;
         }
         return UserType.UNREGISTERED;
     }
