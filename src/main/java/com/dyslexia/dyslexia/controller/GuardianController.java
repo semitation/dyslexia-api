@@ -61,8 +61,7 @@ public class GuardianController {
   })
   @GetMapping("/code/{id}")
   public ResponseEntity<GuardianCodeDto> getCodeById(
-      @Parameter(description = "보호자 ID", required = true) @PathVariable long id)
-      throws NotFoundException {
+      @Parameter(description = "보호자 ID", required = true) @PathVariable long id) {
     return ResponseEntity.ok(guardianService.getCodeById(id));
   }
 

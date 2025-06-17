@@ -1,7 +1,8 @@
 package com.dyslexia.dyslexia.service;
 
-import com.dyslexia.dyslexia.dto.SignUpRequestDto;
+import com.dyslexia.dyslexia.dto.GuardianSignUpRequestDto;
 import com.dyslexia.dyslexia.dto.SignUpResponseDto;
+import com.dyslexia.dyslexia.dto.StudentSignUpRequestDto;
 import com.dyslexia.dyslexia.dto.UserInfoDto;
 import com.dyslexia.dyslexia.dto.StudentInfoDto;
 import com.dyslexia.dyslexia.dto.GuardianInfoDto;
@@ -10,6 +11,8 @@ import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.UserType;
 import com.dyslexia.dyslexia.exception.UserAlreadyExistsException;
+import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
+import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
@@ -17,6 +20,7 @@ import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,17 +37,8 @@ public class UserService {
     private final JwtTokenProvider jwtTokenProvider;
 
     @Transactional
-    public SignUpResponseDto signUp(SignUpRequestDto dto) {
-
-        if (UserType.GUARDIAN == dto.getUserType()) {
-            return registerGuardian(dto);
-        } else {
-            return registerStudent(dto);
-        }
-    }
-
-    private SignUpResponseDto registerGuardian(SignUpRequestDto dto) {
-        if (guardianRepository.existsByClientId(dto.getClientId())) {
+    public SignUpResponseDto registerGuardian(GuardianSignUpRequestDto dto) {
+        if (guardianRepository.existsByClientId(dto.clientId())) {
             throw new UserAlreadyExistsException("이미 가입된 사용자입니다.");
         }
 
@@ -64,27 +59,35 @@ public class UserService {
             .userType(UserType.GUARDIAN).accessToken(accessToken).refreshToken(refreshToken).build();
     }
 
-    private SignUpResponseDto registerStudent(SignUpRequestDto dto) {
-        if (studentRepository.existsByClientId(dto.getClientId())) {
+    @Transactional
+    public SignUpResponseDto registerStudent(StudentSignUpRequestDto dto, Optional<String> code) {
+        if (studentRepository.existsByClientId(dto.clientId())) {
             throw new UserAlreadyExistsException("이미 가입된 사용자입니다.");
         }
 
         Student student = studentMapper.toEntity(dto);
 
-        if (dto.getInterestIds() != null && !dto.getInterestIds().isEmpty()) {
+        if (dto.interests() != null && !dto.interests().isEmpty()) {
 
-            List<Interest> interests = interestRepository.findAllById(dto.getInterestIds());
+            List<Interest> interests = interestRepository.findAllById(dto.interests());
 
             student.addInterests(interests);
         }
 
-        student = studentRepository.save(student);
+        code.ifPresent(matchCode -> {
+            Guardian guardian = guardianRepository.findByMatchCode(matchCode)
+                .orElseThrow(() -> new GuardianNotFoundException("코드 '" + matchCode + "'에 해당하는 보호자를 찾을 수 없습니다."));
 
-        String accessToken = jwtTokenProvider.createAccessToken(student.getClientId(),
+            guardian.addStudent(student);
+        });
+
+        Student savedstudent = studentRepository.save(student);
+
+        String accessToken = jwtTokenProvider.createAccessToken(savedstudent.getClientId(),
             UserType.STUDENT.name());
-        String refreshToken = jwtTokenProvider.createRefreshToken(student.getClientId());
+        String refreshToken = jwtTokenProvider.createRefreshToken(savedstudent.getClientId());
 
-        return SignUpResponseDto.builder().id(student.getId()).name(student.getName())
+        return SignUpResponseDto.builder().id(savedstudent.getId()).name(student.getName())
             .userType(UserType.STUDENT).accessToken(accessToken).refreshToken(refreshToken).build();
     }
 

@@ -35,8 +35,9 @@ public class GuardianService {
   }
 
   @Transactional(readOnly = true)
-  public GuardianCodeDto getCodeById(long id) throws NotFoundException {
-    Guardian guardian = guardianRepository.findById(id).orElseThrow(NotFoundException::new);
+  public GuardianCodeDto getCodeById(long id) {
+    Guardian guardian = guardianRepository.findById(id)
+        .orElseThrow(() -> new GuardianNotFoundException("아이디 '" + id + "'에 해당하는 보호자를 찾을 수 없습니다."));
 
     return guardianMapper.toCodeDto(guardian);
   }

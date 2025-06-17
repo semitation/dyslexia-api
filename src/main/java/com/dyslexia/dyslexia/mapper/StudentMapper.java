@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.mapper;
 
-import com.dyslexia.dyslexia.dto.SignUpRequestDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
+import com.dyslexia.dyslexia.dto.StudentSignUpRequestDto;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.mapper.custom.GradeMapper;
 import com.dyslexia.dyslexia.mapper.custom.InterestMapper;
@@ -17,9 +17,18 @@ public interface StudentMapper {
   StudentDto toDto(Student entity);
 
   @Mapping(target = "guardian", ignore = true)
+  @Mapping(target = "type", ignore = true)
   @Mapping(target = "state", ignore = true)
   @Mapping(target = "profileImageUrl", ignore = true)
   @Mapping(target = "interests", ignore = true)
-  Student toEntity(SignUpRequestDto dto);
+  @Mapping(target = "defaultFontSize", ignore = true)
+  @Mapping(target = "defaultLineSpacing", ignore = true)
+  @Mapping(target = "defaultLetterSpacing", ignore = true)
+  @Mapping(target = "defaultColorScheme", ignore = true)
+  @Mapping(target = "defaultTextToSpeechEnabled", ignore = true)
+  @Mapping(target = "defaultReadingHighlightEnabled", ignore = true)
+  @Mapping(target = "defaultBackgroundColor", ignore = true)
+  @Mapping(target = "defaultTextColor", ignore = true)
+  Student toEntity(StudentSignUpRequestDto dto);
 
 }
