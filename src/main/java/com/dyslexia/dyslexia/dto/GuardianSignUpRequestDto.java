@@ -9,4 +9,5 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+@Builder
 public record GuardianSignUpRequestDto(String clientId, String name, String email, GuardianRole guardianRole, String organization) {}
