@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.entity;
 
+import com.dyslexia.dyslexia.enums.GuardianRole;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -33,6 +34,8 @@ public class Guardian {
   private String organization;
 
   private String profileImageUrl;
+
+  private GuardianRole guardianRole;
 
   @Column(unique = true)
   private String matchCode;
