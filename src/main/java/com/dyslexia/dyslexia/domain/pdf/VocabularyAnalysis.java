@@ -14,7 +14,7 @@ public class VocabularyAnalysis {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long documentId;
+    private Long textbookId;
     private Integer pageNumber;
     private String blockId;
 

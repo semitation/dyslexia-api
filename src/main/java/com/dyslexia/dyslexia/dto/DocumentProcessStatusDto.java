@@ -1,6 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,7 +24,7 @@ public class DocumentProcessStatusDto {
     private Long documentId;
 
     @Schema(description = "처리 상태", example = "PROCESSING")
-    private DocumentProcessStatus status;
+    private ConvertProcessStatus status;
 
     @Schema(description = "처리 진행도 (0-100)", example = "65")
     private Integer progress;

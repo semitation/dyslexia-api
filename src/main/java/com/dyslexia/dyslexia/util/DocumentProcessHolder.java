@@ -2,8 +2,10 @@ package com.dyslexia.dyslexia.util;
 
 public class DocumentProcessHolder {
     private static final ThreadLocal<Long> documentId = new ThreadLocal<>();
+    private static final ThreadLocal<Long> textbookId = new ThreadLocal<>();
+    private static final ThreadLocal<Long> teacherId = new ThreadLocal<>();
+
     private static final ThreadLocal<String> pdfName = new ThreadLocal<>();
-    private static final ThreadLocal<String> teacherId = new ThreadLocal<>();
     private static final ThreadLocal<String> pdfFolderPath = new ThreadLocal<>();
     private static final ThreadLocal<Integer> pageNumber = new ThreadLocal<>();
 
@@ -23,11 +25,20 @@ public class DocumentProcessHolder {
         return pdfName.get();
     }
 
-    public static void setTeacherId(String id) {
+    // 추가
+    public static void setTextbookId(Long id) {
+        textbookId.set(id);
+    }
+
+    public static Long getTextbookId() {
+        return textbookId.get();
+    }
+
+    public static void setTeacherId(Long id) {
         teacherId.set(id);
     }
 
-    public static String getTeacherId() {
+    public static Long getTeacherId() {
         return teacherId.get();
     }
     
@@ -46,6 +57,8 @@ public class DocumentProcessHolder {
     public static Integer getPageNumber() {
         return pageNumber.get() != null ? pageNumber.get() : 1; // 기본값 1
     }
+
+
 
     public static void clear() {
         documentId.remove();

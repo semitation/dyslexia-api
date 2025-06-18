@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.DocumentProcessStatusDto;
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.dyslexia.dyslexia.service.DocumentProcessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,8 +37,8 @@ public class DocumentStatusController {
             @PathVariable("documentId") Long documentId) {
         
         try {
-            DocumentProcessStatus status = documentProcessService.getDocumentProcessStatus(documentId);
-            int progress = documentProcessService.calculateDocumentProcessProgress(documentId);
+            ConvertProcessStatus status = documentProcessService.getConvertProcessStatus(documentId);
+            int progress = documentProcessService.calculateConvertProcessProgress(documentId);
             
             DocumentProcessStatusDto responseDto = DocumentProcessStatusDto.builder()
                 .success(true)
@@ -91,7 +91,7 @@ public class DocumentStatusController {
                 .success(true)
                 .message("문서 처리 재시도가 시작되었습니다.")
                 .documentId(documentId)
-                .status(DocumentProcessStatus.PENDING)
+                .status(ConvertProcessStatus.PENDING)
                 .progress(0)
                 .build();
             

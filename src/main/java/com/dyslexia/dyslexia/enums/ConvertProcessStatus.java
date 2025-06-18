@@ -1,6 +1,6 @@
 package com.dyslexia.dyslexia.enums;
 
-public enum DocumentProcessStatus {
+public enum ConvertProcessStatus {
     PENDING,
     PROCESSING,
     COMPLETED,
