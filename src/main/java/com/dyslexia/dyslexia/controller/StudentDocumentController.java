@@ -117,7 +117,7 @@ public class StudentDocumentController {
             @Parameter(description = "학생 ID", required = true) 
             @PathVariable Long studentId,
             
-            @Parameter(description = "문서 ID", required = true) 
+            @Parameter(description = "교재 ID", required = true)
             @PathVariable Long documentId) {
         
         log.info("학생 ID: {}, 문서 ID: {}의 페이지 목록 조회 요청", studentId, documentId);
@@ -140,7 +140,7 @@ public class StudentDocumentController {
                 .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
             
             // 페이지 목록 조회
-            List<Page> pages = pageRepository.findByDocumentIdOrderByPageNumberAsc(documentId);
+            List<Page> pages = pageRepository.findByTextbookIdOrderByPageNumberAsc(documentId);
             
             if (pages.isEmpty()) {
                 return ResponseEntity.ok(

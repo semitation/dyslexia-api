@@ -55,7 +55,7 @@ public class GuardianDocumentController {
         log.info("보호자 ID: {}의 문서 목록 조회 요청", guardianId);
         
         try {
-            List<Document> documents = documentRepository.findAllByOrderByCreatedAtDesc();
+            List<Document> documents = documentRepository.findAllByOrderByUploadedAtDesc();
             
             if (documents.isEmpty()) {
                 return ResponseEntity.ok(

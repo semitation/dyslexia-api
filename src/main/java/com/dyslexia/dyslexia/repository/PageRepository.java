@@ -2,7 +2,8 @@ package com.dyslexia.dyslexia.repository;
 
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.entity.Textbook;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -12,13 +13,13 @@ import java.util.Optional;
 @Repository
 public interface PageRepository extends JpaRepository<Page, Long> {
     
-    List<Page> findByDocument(Document document);
+    List<Page> findByTextbook(Textbook textbook);
     
-    List<Page> findByDocumentId(Long documentId);
+    List<Page> findByTextbookId(Long textbookId);
     
-    Optional<Page> findByDocumentAndPageNumber(Document document, Integer pageNumber);
+    Optional<Page> findByTextbookAndPageNumber(Textbook textbook, Integer pageNumber);
     
-    List<Page> findByProcessingStatus(DocumentProcessStatus status);
+    List<Page> findByProcessingStatus(ConvertProcessStatus status);
     
-    List<Page> findByDocumentIdOrderByPageNumberAsc(Long documentId);
+    List<Page> findByTextbookIdOrderByPageNumberAsc(Long textbookId);
 } 

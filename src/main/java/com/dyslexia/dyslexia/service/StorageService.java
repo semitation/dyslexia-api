@@ -47,7 +47,7 @@ public class StorageService {
         }
 
         try {
-            log.info("Document ID 기반 파일 저장 요청 - 파일명: {}, 보호자ID: {}, Document ID: {}, 업로드 디렉토리: {}", 
+            log.info("Document ID 기반 파일 저장 요청 - 파일명: {}, 보호자 ID: {}, Document ID: {}, 업로드 디렉토리: {}",
                     uniqueFilename, guardianId, documentId, uploadDir);
             
             Path uploadPath = Paths.get(uploadDir);

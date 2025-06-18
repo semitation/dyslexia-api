@@ -1,7 +1,7 @@
 package com.dyslexia.dyslexia.dto;
 
 import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -41,7 +41,7 @@ public class PageContentResponseDto {
     private JsonNode processedContent;
 
     @Schema(description = "처리 상태", example = "COMPLETED")
-    private DocumentProcessStatus processingStatus;
+    private ConvertProcessStatus processingStatus;
 
     @Schema(description = "섹션 제목")
     private String sectionTitle;

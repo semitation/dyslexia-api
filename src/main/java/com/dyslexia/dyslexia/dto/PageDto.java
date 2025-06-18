@@ -1,6 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -39,7 +39,7 @@ public class PageDto {
     private Float complexityScore;
 
     @Schema(description = "처리 상태", example = "COMPLETED")
-    private DocumentProcessStatus processingStatus;
+    private ConvertProcessStatus processingStatus;
 
     @Schema(description = "생성 시간")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

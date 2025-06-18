@@ -3,7 +3,6 @@ package com.dyslexia.dyslexia.controller;
 import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.DocumentResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.service.DocumentProcessService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,8 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Tag(name = "Document", description = "PDF 문서 관리 API")
 @RestController
@@ -42,7 +39,7 @@ public class DocumentController {
     })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentResponseDto> uploadDocument(
-            @Parameter(description = "보호자 ID", required = true) 
+            @Parameter(description = "보호자 ID", required = true)
             @RequestParam("guardianId") Long guardianId,
             
             @Parameter(description = "PDF 파일", required = true) 
@@ -71,7 +68,7 @@ public class DocumentController {
             }
             
             Document document = documentProcessService.uploadDocument(guardianId, file, title, grade, subjectPath);
-            
+
             DocumentResponseDto responseDto = DocumentResponseDto.builder()
                 .success(true)
                 .message("PDF 업로드 완료. 비동기 처리가 시작되었습니다.")
@@ -106,12 +103,7 @@ public class DocumentController {
             .title(document.getTitle())
             .originalFilename(document.getOriginalFilename())
             .fileSize(document.getFileSize())
-            .pageCount(document.getPageCount())
-            .grade(document.getGrade())
-            .subjectPath(document.getSubjectPath())
-            .processStatus(document.getProcessStatus())
-            .createdAt(document.getCreatedAt())
-            .updatedAt(document.getUpdatedAt())
+            .uploadedAt(document.getUploadedAt())
             .build();
     }
 } 
