@@ -1,0 +1,13 @@
+filebeat.inputs:
+  - type: log
+    enabled: true
+    paths:
+      - /var/log/dyslexia-app/*.log
+
+    multiline:
+      pattern: '^\d{4}-\d{2}-\d{2}T'
+      negate: true
+      match: after
+
+output.elasticsearch:
+  hosts: [ "elasticsearch:9200" ]
