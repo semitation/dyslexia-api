@@ -15,8 +15,8 @@ import java.time.LocalDateTime;
 @Schema(description = "문서 할당 요청 DTO")
 public class DocumentAssignmentRequest {
 
-    @Schema(description = "선생님 ID", example = "1", required = true)
-    private Long teacherId;
+    @Schema(description = "보호자 ID", example = "1", required = true)
+    private Long guardianId;
 
     @Schema(description = "학생 ID", example = "1", required = true)
     private Long studentId;

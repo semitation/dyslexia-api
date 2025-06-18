@@ -111,18 +111,18 @@ public class DocumentContentController {
 //        return ResponseEntity.ok(responses);
 //    }
 
-//    @GetMapping(value = "/pages/images/{teacherId}/{documentId}/{pageNumber}/{blockId}")
+//    @GetMapping(value = "/pages/images/{guardianId}/{documentId}/{pageNumber}/{blockId}")
 //    @Operation(
 //        summary = "페이지 이미지 조회",
 //        description = "특정 페이지와 블록에 연결된 이미지를 조회합니다."
 //    )
 //    public ResponseEntity<byte[]> getImage(
-//        @Parameter(description = "교사 ID", required = true) @PathVariable("teacherId") Long teacherId,
+//        @Parameter(description = "보호자 ID", required = true) @PathVariable("guardianId") Long guardianId,
 //        @Parameter(description = "문서 ID", required = true) @PathVariable("documentId") Long documentId,
 //        @Parameter(description = "페이지 번호", required = true) @PathVariable("pageNumber") Integer pageNumber,
 //        @Parameter(description = "블록 ID", required = true) @PathVariable("blockId") String blockId) {
 //
-//        byte[] imageData = documentContentService.getImage(teacherId, documentId, pageNumber, blockId);
+//        byte[] imageData = documentContentService.getImage(guardianId, documentId, pageNumber, blockId);
 //
 //        return ResponseEntity.ok()
 //            .contentType(MediaType.parseMediaType("image/svg+xml"))

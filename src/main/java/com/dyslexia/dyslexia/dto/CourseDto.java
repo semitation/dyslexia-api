@@ -10,7 +10,7 @@ import lombok.Data;
 public class CourseDto {
 
   private Long id;
-  private Long teacherId;
+  private Long guardianId;
   private String subjectPath;
   private String title;
   private String type;

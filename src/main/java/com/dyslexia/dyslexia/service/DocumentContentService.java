@@ -44,8 +44,8 @@ public class DocumentContentService {
         return pageImageRepository.findByPageId(pageId);
     }
 
-//    public byte[] getImage(Long teacherId, Long documentId, Integer pageNumber, String blockId) {
-//        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, teacherId, documentId, pageNumber, blockId + ".svg");
+//    public byte[] getImage(Long guardianId, Long documentId, Integer pageNumber, String blockId) {
+//        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, guardianId, documentId, pageNumber, blockId + ".svg");
 //
 //        try {
 //            Path filePath = Paths.get(imagePath);

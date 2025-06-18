@@ -38,7 +38,7 @@ public class KakaoController {
                         - registered: 회원가입 여부
                         - clientId: 카카오 ID
                         - nickname: 카카오 닉네임
-                        - userType: 사용자 타입 (STUDENT/TEACHER/UNREGISTERED)
+                        - userType: 사용자 타입 (STUDENT/GUARDIAN/UNREGISTERED)
                         - accessToken: JWT 액세스 토큰 (회원가입된 경우에만)
                         - refreshToken: JWT 리프레시 토큰 (회원가입된 경우에만)
                         """

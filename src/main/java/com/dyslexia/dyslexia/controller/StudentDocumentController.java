@@ -72,7 +72,7 @@ public class StudentDocumentController {
                     Document document = assignment.getDocument();
                     return DocumentDto.builder()
                         .id(document.getId())
-                        .teacherId(document.getTeacher().getId())
+                        .guardianId(document.getGuardian().getId())
                         .title(document.getTitle())
                         .originalFilename(document.getOriginalFilename())
                         .fileSize(document.getFileSize())

@@ -5,6 +5,6 @@ import lombok.Data;
 
 @Data
 @Builder
-public class TeacherCodeDto {
+public class GuardianCodeDto {
     String matchCode;
 }

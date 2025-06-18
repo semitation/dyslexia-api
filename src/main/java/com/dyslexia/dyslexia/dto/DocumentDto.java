@@ -21,8 +21,8 @@ public class DocumentDto {
     @Schema(description = "문서 ID", example = "1")
     private Long id;
 
-    @Schema(description = "선생님 ID", example = "1")
-    private Long teacherId;
+    @Schema(description = "보호자 ID", example = "1")
+    private Long guardianId;
 
     @Schema(description = "문서 제목", example = "생태계와 환경")
     private String title;

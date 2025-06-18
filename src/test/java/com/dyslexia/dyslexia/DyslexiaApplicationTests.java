@@ -11,17 +11,17 @@ import com.dyslexia.dyslexia.dto.CourseInfoReqDto;
 import com.dyslexia.dyslexia.dto.CourseReqDto;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.StudentReqDto;
-import com.dyslexia.dyslexia.dto.TeacherDto;
+import com.dyslexia.dyslexia.dto.GuardianDto;
 import com.dyslexia.dyslexia.entity.Interest;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.mapper.custom.GradeMapper;
 import com.dyslexia.dyslexia.mapper.custom.InterestMapper;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.service.CourseInfoService;
 import com.dyslexia.dyslexia.service.CourseService;
 import com.dyslexia.dyslexia.service.StudentService;
-import com.dyslexia.dyslexia.service.TeacherService;
+import com.dyslexia.dyslexia.service.GuardianService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,9 +34,9 @@ import org.springframework.transaction.annotation.Transactional;
 class DyslexiaApplicationTests {
 
   @Autowired
-  private TeacherRepository teacherRepository;
+  private GuardianRepository guardianRepository;
   @Autowired
-  private TeacherService teacherService;
+  private GuardianService guardianService;
   @Autowired
   private StudentService studentService;
   @Autowired
@@ -89,16 +89,16 @@ class DyslexiaApplicationTests {
 
   // ✅ 공통 생성 메서드들
 
-  private Teacher createTeacher(String clientId, String org) {
-    return teacherRepository.save(
-        Teacher.builder().clientId(clientId).organization(org).profileImageUrl("teacher.png")
+  private Guardian createGuardian(String clientId, String org) {
+    return guardianRepository.save(
+        Guardian.builder().clientId(clientId).organization(org).profileImageUrl("guardian.png")
             .build());
   }
 
-  private StudentDto createStudent(String clientId, Teacher teacher, String gradeLabel) {
+  private StudentDto createStudent(String clientId, Guardian guardian, String gradeLabel) {
     StudentReqDto req = new StudentReqDto();
     req.setClientId(clientId);
-    req.setTeacherId(teacher.getId());
+    req.setGuardianId(guardian.getId());
     req.setGradeLabel(gradeLabel);
     req.setType("REGULAR");
     req.setState("ACTIVE");
@@ -109,9 +109,9 @@ class DyslexiaApplicationTests {
 //    return studentService.saveStudent(req);
   }
 
-  private CourseDto createCourse(String title, Teacher teacher, Grade grade) {
+  private CourseDto createCourse(String title, Guardian guardian, Grade grade) {
     CourseReqDto req = new CourseReqDto();
-    req.setTeacherId(teacher.getId());
+    req.setGuardianId(guardian.getId());
     req.setSubjectPath("math/" + title);
     req.setTitle(title);
     req.setType("REGULAR");
@@ -123,23 +123,23 @@ class DyslexiaApplicationTests {
   // ✅ 테스트 메서드들
 
   @Test
-  void testSaveTeacher() {
+  void testSaveGuardian() {
     // when
-    Teacher teacher = createTeacher("teacher01", "한글초등학교");
+    Guardian guardian = createGuardian("guardian01", "한글초등학교");
 
     // then
-    assertNotNull(teacher.getId());
-    assertEquals("teacher01", teacher.getClientId());
+    assertNotNull(guardian.getId());
+    assertEquals("guardian01", guardian.getClientId());
   }
 
   @Test
   void testSaveStudent() {
     // TODO: 해당 테스트는 실패
 //    // given
-//    Teacher teacher = createTeacher("teacher02", "중앙초");
+//    Guardian guardian = createGuardian("guardian02", "중앙초");
 //
 //    // when
-//    StudentDto student = createStudent("student01", teacher, "4학년");
+//    StudentDto student = createStudent("student01", guardian, "4학년");
 //
 //    // then
 //    assertEquals("student01", student.getClientId());
@@ -150,10 +150,10 @@ class DyslexiaApplicationTests {
   @Test
   void testSaveCourse() {
     // given
-    Teacher teacher = createTeacher("teacher03", "국제초등학교");
+    Guardian guardian = createGuardian("guardian03", "국제초등학교");
 
     // when
-    CourseDto course = createCourse("기초 대수학", teacher, Grade.GRADE_4);
+    CourseDto course = createCourse("기초 대수학", guardian, Grade.GRADE_4);
 
     // then
     assertEquals("기초 대수학", course.getTitle());
@@ -164,15 +164,15 @@ class DyslexiaApplicationTests {
   void testSaveCourseInfo() {
     // TODO: 해당 테스트는 실패
 //    // given
-//    Teacher teacher = createTeacher("teacher04", "명문초");
-//    StudentDto student = createStudent("student99", teacher, "3학년");
-//    CourseDto course = createCourse("기초 물리", teacher, Grade.GRADE_3);
+//    Guardian guardian = createGuardian("guardian04", "명문초");
+//    StudentDto student = createStudent("student99", guardian, "3학년");
+//    CourseDto course = createCourse("기초 물리", guardian, Grade.GRADE_3);
 //
 //    // when
 //    CourseInfoReqDto infoReq = new CourseInfoReqDto();
 //    infoReq.setCourseId(course.getId());
 //    infoReq.setStudentId(student.getId());
-//    infoReq.setTeacherId(teacher.getId());
+//    infoReq.setGuardianId(guardian.getId());
 //    infoReq.setLearningTime(60);
 //    infoReq.setPage(5);
 //    infoReq.setMaxPage(10);
@@ -186,21 +186,21 @@ class DyslexiaApplicationTests {
   }
 
   @Test
-  void testGetTeacherById() throws NotFoundException {
-    Teacher teacher = createTeacher("teacher001", "예림초등학교");
+  void testGetGuardianById() throws NotFoundException {
+    Guardian guardian = createGuardian("guardian001", "예림초등학교");
 
-    TeacherDto result = teacherService.getById(teacher.getId());
+    GuardianDto result = guardianService.getById(guardian.getId());
 
     assertNotNull(result);
-    assertEquals("teacher001", result.getClientId());
+    assertEquals("guardian001", result.getClientId());
   }
 
   @Test
   void testGetStudentById() throws NotFoundException {
     // TODO: 해당 테스트는 실패
-//    Teacher teacher = createTeacher("teacher002", "현명초등학교");
+//    Guardian guardian = createGuardian("guardian002", "현명초등학교");
 //
-//    StudentDto saved = createStudent("student001", teacher, "4학년");
+//    StudentDto saved = createStudent("student001", guardian, "4학년");
 //    StudentDto result = studentService.getById(saved.getId());
 //
 //    assertNotNull(result);
@@ -210,9 +210,9 @@ class DyslexiaApplicationTests {
 
   @Test
   void testGetCourseById() throws NotFoundException {
-    Teacher teacher = createTeacher("teacher003", "미래초");
+    Guardian guardian = createGuardian("guardian003", "미래초");
 
-    CourseDto saved = createCourse("기초 우주과학", teacher, Grade.GRADE_4);
+    CourseDto saved = createCourse("기초 우주과학", guardian, Grade.GRADE_4);
     CourseDto result = courseService.getById(saved.getId());
 
     assertNotNull(result);
@@ -222,14 +222,14 @@ class DyslexiaApplicationTests {
   @Test
   void testGetCourseInfoById() throws NotFoundException {
     // TODO: 해당 테스트는 실패
-//    Teacher teacher = createTeacher("teacher004", "지성초");
-//    StudentDto student = createStudent("student999", teacher, "3학년");
-//    CourseDto course = createCourse("수학 사고력 향상", teacher, Grade.GRADE_3);
+//    Guardian guardian = createGuardian("guardian004", "지성초");
+//    StudentDto student = createStudent("student999", guardian, "3학년");
+//    CourseDto course = createCourse("수학 사고력 향상", guardian, Grade.GRADE_3);
 //
 //    CourseInfoReqDto infoReq = new CourseInfoReqDto();
 //    infoReq.setCourseId(course.getId());
 //    infoReq.setStudentId(student.getId());
-//    infoReq.setTeacherId(teacher.getId());
+//    infoReq.setGuardianId(guardian.getId());
 //    infoReq.setLearningTime(45);
 //    infoReq.setPage(2);
 //    infoReq.setMaxPage(5);

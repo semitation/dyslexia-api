@@ -10,7 +10,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class CourseReqDto {
 
-  private Long teacherId;
+  private Long guardianId;
   private String subjectPath;
   private String title;
   private String type;

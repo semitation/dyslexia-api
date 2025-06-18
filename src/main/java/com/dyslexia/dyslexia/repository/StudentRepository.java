@@ -6,7 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface StudentRepository extends JpaRepository<Student, Long> {
-  List<Student> findByTeacherId(Long teacherId);
+  List<Student> findByGuardianId(Long guardianId);
 
     Optional<Student> findByClientId(String id);
 

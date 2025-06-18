@@ -3,10 +3,10 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.CourseDto;
 import com.dyslexia.dyslexia.dto.CourseReqDto;
 import com.dyslexia.dyslexia.entity.Course;
-import com.dyslexia.dyslexia.entity.Teacher;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.mapper.CourseMapper;
 import com.dyslexia.dyslexia.repository.CourseRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
@@ -19,15 +19,15 @@ import org.springframework.transaction.annotation.Transactional;
 public class CourseService {
 
   private final CourseRepository courseRepository;
-  private final TeacherRepository teacherRepository;
+  private final GuardianRepository guardianRepository;
   private final CourseMapper courseMapper;
 
   @Transactional
   public CourseDto saveCourse(CourseReqDto dto) {
-    Teacher teacher = teacherRepository.findById(dto.getTeacherId())
-        .orElseThrow(() -> new IllegalArgumentException("Teacher not found"));
+    Guardian guardian = guardianRepository.findById(dto.getGuardianId())
+        .orElseThrow(() -> new IllegalArgumentException("Guardian not found"));
 
-    Course course = Course.builder().teacher(teacher).subjectPath(dto.getSubjectPath())
+    Course course = Course.builder().guardian(guardian).subjectPath(dto.getSubjectPath())
         .title(dto.getTitle()).type(dto.getType()).grade(dto.getGrade()).state(dto.getState())
         .build();
 
@@ -39,8 +39,8 @@ public class CourseService {
         .orElseThrow(NotFoundException::new);
   }
 
-  public List<CourseDto> getCoursesByTeacher(Long teacherId) {
-    return courseRepository.findByTeacherId(teacherId).stream().map(courseMapper::toDto).toList();
+  public List<CourseDto> getCoursesByGuardian(Long guardianId) {
+    return courseRepository.findByGuardianId(guardianId).stream().map(courseMapper::toDto).toList();
   }
 
 

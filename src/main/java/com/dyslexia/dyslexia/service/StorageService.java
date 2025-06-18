@@ -41,14 +41,14 @@ public class StorageService {
     }
 
 
-    public String store(MultipartFile file, String uniqueFilename, Long teacherId, Long documentId) throws IOException {
+    public String store(MultipartFile file, String uniqueFilename, Long guardianId, Long documentId) throws IOException {
         if (file.isEmpty()) {
             throw new IllegalArgumentException("파일이 비어 있습니다.");
         }
 
         try {
-            log.info("Document ID 기반 파일 저장 요청 - 파일명: {}, 교사ID: {}, Document ID: {}, 업로드 디렉토리: {}", 
-                    uniqueFilename, teacherId, documentId, uploadDir);
+            log.info("Document ID 기반 파일 저장 요청 - 파일명: {}, 보호자ID: {}, Document ID: {}, 업로드 디렉토리: {}", 
+                    uniqueFilename, guardianId, documentId, uploadDir);
             
             Path uploadPath = Paths.get(uploadDir);
             if (!Files.exists(uploadPath)) {
@@ -57,15 +57,15 @@ public class StorageService {
                 log.info("업로드 디렉토리 재생성 완료: {}", uploadPath.toAbsolutePath());
             }
             
-            String teacherFolderPath = teacherId.toString();
-            Path teacherDir = uploadPath.resolve(teacherFolderPath);
+            String guardianFolderPath = guardianId.toString();
+            Path guardianDir = uploadPath.resolve(guardianFolderPath);
 
-            if (!Files.exists(teacherDir)) {
-                Files.createDirectories(teacherDir);
-                log.info("교사 디렉토리 생성 완료: {}", teacherDir.toAbsolutePath());
+            if (!Files.exists(guardianDir)) {
+                Files.createDirectories(guardianDir);
+                log.info("보호자 디렉토리 생성 완료: {}", guardianDir.toAbsolutePath());
             }
             
-            Path documentDir = teacherDir.resolve(documentId.toString());
+            Path documentDir = guardianDir.resolve(documentId.toString());
 
             if (!Files.exists(documentDir)) {
                 Files.createDirectories(documentDir);

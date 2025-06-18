@@ -40,8 +40,8 @@ public class AIRquest {
     private AIResponse response;
 
     @ManyToOne
-    @JoinColumn(name = "teacher_id")
-    private Teacher teacher;
+    @JoinColumn(name = "guardian_id")
+    private Guardian guardian;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

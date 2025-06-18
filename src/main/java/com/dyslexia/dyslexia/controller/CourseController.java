@@ -33,7 +33,7 @@ public class CourseController {
   }
 
   @GetMapping
-  public ResponseEntity<List<CourseDto>> getCoursesByTeacher(@RequestParam Long teacherId) {
-    return ResponseEntity.ok(courseService.getCoursesByTeacher(teacherId));
+  public ResponseEntity<List<CourseDto>> getCoursesByGuardian(@RequestParam Long guardianId) {
+    return ResponseEntity.ok(courseService.getCoursesByGuardian(guardianId));
   }
 }

@@ -25,8 +25,8 @@ public class Document {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "teacher_id", nullable = false)
-    private Teacher teacher;
+    @JoinColumn(name = "guardian_id", nullable = false)
+    private Guardian guardian;
 
     @Column(nullable = false)
     private String title;
@@ -74,11 +74,11 @@ public class Document {
     private List<Page> pages = new ArrayList<>();
 
     @Builder
-    public Document(Teacher teacher, String title, String originalFilename, String filePath,
+    public Document(Guardian guardian, String title, String originalFilename, String filePath,
                    Long fileSize, String mimeType, Integer pageCount, Grade grade,
                    String subjectPath, String state, String type, String metadata,
                    DocumentProcessStatus processStatus) {
-        this.teacher = teacher;
+        this.guardian = guardian;
         this.title = title;
         this.originalFilename = originalFilename;
         this.filePath = filePath;

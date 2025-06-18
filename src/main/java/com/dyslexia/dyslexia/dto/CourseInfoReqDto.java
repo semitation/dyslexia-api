@@ -11,7 +11,7 @@ public class CourseInfoReqDto {
 
   private Long courseId;
   private Long studentId;
-  private Long teacherId;
+  private Long guardianId;
   private Integer learningTime;
   private Integer page;
   private Integer maxPage;
