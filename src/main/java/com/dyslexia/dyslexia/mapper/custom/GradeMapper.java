@@ -5,11 +5,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class GradeMapper {
-  public Grade toEnum(String label) {
-    return label == null ? null : Grade.fromLabel(label);
+  public Grade toEnum(String name) {
+    return name == null ? null : Grade.valueOf(name);
   }
 
   public String toLabel(Grade grade) {
-    return grade == null ? null : grade.getLabel();
+    return grade == null ? null : grade.name();
   }
 }
