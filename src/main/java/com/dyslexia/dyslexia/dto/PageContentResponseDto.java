@@ -65,11 +65,11 @@ public class PageContentResponseDto {
   private List<Block> blocks;
 
   public static PageContentResponseDto fromEntity(Page page, ObjectMapper objectMapper) {
-    List<Block> blocks = null;
+    List<Block> blocks;
     try {
       if (page.getProcessedContent() != null && !page.getProcessedContent().isNull()) {
         blocks = objectMapper.readValue(page.getProcessedContent().toString(),
-            new TypeReference<List<Block>>() {
+            new TypeReference<>() {
             });
       } else {
         blocks = Collections.emptyList();
