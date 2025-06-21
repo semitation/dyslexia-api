@@ -4,7 +4,7 @@ import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.DocumentResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.enums.Grade;
-import com.dyslexia.dyslexia.service.DocumentProcessService;
+import com.dyslexia.dyslexia.service.ConvertProcessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -28,7 +28,7 @@ import java.io.IOException;
 @Slf4j
 public class DocumentController {
 
-    private final DocumentProcessService documentProcessService;
+    private final ConvertProcessService convertProcessService;
 
     @Operation(summary = "PDF 문서 업로드", description = "보호자가 PDF 문서를 업로드하고 처리를 시작합니다.")
     @ApiResponses({
@@ -67,8 +67,8 @@ public class DocumentController {
                 );
             }
             
-            Document document = documentProcessService.uploadDocument(guardianId, file, title, grade, subjectPath);
-
+            Document document = convertProcessService.uploadDocument(guardianId, file, title, grade);
+            
             DocumentResponseDto responseDto = DocumentResponseDto.builder()
                 .success(true)
                 .message("PDF 업로드 완료. 비동기 처리가 시작되었습니다.")

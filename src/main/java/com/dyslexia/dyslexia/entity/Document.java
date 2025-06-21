@@ -79,30 +79,6 @@ public class Document {
     this.metadata = metadata;
     this.uploadedAt = LocalDateTime.now();
   }
-    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Page> pages = new ArrayList<>();
-
-    @Builder
-    public Document(Guardian guardian, String title, String originalFilename, String filePath,
-                   Long fileSize, String mimeType, Integer pageCount, Grade grade,
-                   String subjectPath, String state, String type, String metadata,
-                   DocumentProcessStatus processStatus) {
-        this.guardian = guardian;
-        this.title = title;
-        this.originalFilename = originalFilename;
-        this.filePath = filePath;
-        this.fileSize = fileSize;
-        this.mimeType = mimeType;
-        this.pageCount = pageCount;
-        this.grade = grade;
-        this.subjectPath = subjectPath;
-        this.state = state;
-        this.type = type;
-        this.metadata = metadata;
-        this.processStatus = processStatus != null ? processStatus : DocumentProcessStatus.PENDING;
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-    }
 
   @PreUpdate
   public void preUpdate() {

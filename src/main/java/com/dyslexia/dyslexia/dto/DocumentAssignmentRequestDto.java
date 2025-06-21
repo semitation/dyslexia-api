@@ -22,7 +22,7 @@ public class DocumentAssignmentRequestDto {
     private Long studentId;
 
     @Schema(description = "문서 ID", example = "1", required = true)
-    private Long documentId;
+    private Long textbookId;
 
     @Schema(description = "제출 기한", example = "2023-12-31T23:59:59")
     private LocalDateTime dueDate;

@@ -52,7 +52,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class DocumentProcessService {
+public class ConvertProcessService {
 
   // 스레드 풀 (문서 처리 전용)
   private static final int MAX_CONCURRENT_PAGES = 4;
@@ -97,9 +97,9 @@ public class DocumentProcessService {
             .build();
 
         document = documentRepository.save(document);
-        
+
         String uniqueFilename = UUID.randomUUID() + fileExtension;
-        
+
         String filePath = storageService.store(file, uniqueFilename, guardianId, document.getId());
         log.info("파일 저장 경로: {}", filePath);
 
@@ -107,46 +107,56 @@ public class DocumentProcessService {
 
     document = documentRepository.save(document);
 
-    final Long documentId = document.getId();
+    List<String> rawPages = pdfParserService.parsePages(document.getFilePath());
+
+    long textbookId = CreateTextbook(document.getId(), rawPages.size(), grade, grade);
+
+    if (textbookId == -1) {
+      throw new IllegalArgumentException("교재를 찾을 수 없습니다.");
+    }
 
     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
       @Override
       public void afterCommit() {
-        CompletableFuture.runAsync(() -> processDocumentAsync(documentId, grade), taskExecutor);
+        CompletableFuture.runAsync(() -> processConvertAsync(textbookId, rawPages), taskExecutor);
       }
     });
 
     return document;
   }
 
-  private void processDocumentAsync(Long documentId, Grade grade) {
-
-    long textbookId = 0;
-
+  private long CreateTextbook(long documentId, int pageCount, Grade maxGrade, Grade minGrade) {
     try {
-      log.info("문서 ID: {}의 비동기 처리를 시작합니다.", documentId);
-
       Document document = documentRepository.findById(documentId)
           .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
-
-      List<String> rawPages = pdfParserService.parsePages(document.getFilePath());
 
       Textbook textbook = Textbook.builder()
           .document(document)
           .teacher(document.getTeacher())
           .title(document.getTitle())
-          .pageCount(rawPages.size())
-          .maxGrade(grade)
-          .minGrade(grade)
+          .pageCount(pageCount)
+          .maxGrade(maxGrade)
+          .minGrade(minGrade)
           .build();
 
       textbook.setConvertProcessStatus(ConvertProcessStatus.PROCESSING);
 
       textbookRepository.save(textbook);
 
-      textbookId = textbook.getId();
+      return textbook.getId();
 
-      log.info("문서({})->교재({}) 변환 시작, 전체 페이지 수: {}", documentId, textbookId, rawPages.size());
+    } catch (Exception e) {
+      log.error("문서({}) ", documentId, e);
+      return -1;
+    }
+  }
+
+  private void processConvertAsync(Long textbookId, List<String> rawPages) {
+    try {
+      Textbook textbook = textbookRepository.findById(textbookId)
+          .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+
+      log.info("교재({}) 비동기 처리를 시작합니다.", textbookId);
 
       // 병렬 처리를 위한 CompletableFuture 리스트
       List<CompletableFuture<Void>> pageFutures = new ArrayList<>();
@@ -167,21 +177,20 @@ public class DocumentProcessService {
           final int pageNumber = i + 1;
           final String pageContent = rawPages.get(i);
 
-          long finalTextbookId = textbookId;
-
           CompletableFuture<Void> pageFuture = CompletableFuture
               .runAsync(() -> {
                 try {
-                  log.info("문서({})->교재({}) 변환 병렬 처리 시작 - 페이지 번호: {}", documentId, finalTextbookId, pageNumber);
+                  log.info("교재({}) 변환 병렬 처리 시작 - 페이지 번호: {}", textbookId,
+                      pageNumber);
                   processPageWithTransaction(textbook, pageNumber, pageContent);
-                  log.info("문서({})->교재({}) 변환 병렬 처리 완료 - 페이지 번호: {}", documentId, finalTextbookId, pageNumber);
+                  log.info("교재({}) 변환 병렬 처리 완료 - 페이지 번호: {}", textbookId, pageNumber);
                 } catch (Exception e) {
-                  log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", documentId, pageNumber, e);
-                  throw e; // 상위 CompletableFuture에서 처리하도록 재발생
+                  log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbookId, pageNumber, e);
+                  throw e; // 상위 CompletableFuture 에서 처리하도록 재발생
                 }
               }, pageProcessorExecutor)
               .exceptionally(ex -> {
-                log.error("문서({})->교재({}) 변환 병렬 처리 실패 - 페이지 번호: {}", documentId, finalTextbookId, pageNumber, ex);
+                log.error("교재({}) 변환 병렬 처리 실패 - 페이지 번호: {}", textbookId, pageNumber, ex);
                 // 페이지 상태 업데이트 로직
                 updatePageStatusToFailed(textbook, pageNumber);
                 return null;
@@ -203,14 +212,14 @@ public class DocumentProcessService {
           textbook.setConvertProcessStatus(ConvertProcessStatus.COMPLETED);
           textbookRepository.save(textbook);
 
-          log.info("문서({})->교재({}) 모든 변환 처리 완료", documentId, textbookId);
+          log.info("교재({}) 모든 변환 처리 완료", textbookId);
 
         } catch (TimeoutException e) {
-          log.error("문서({})->교재({}) 변환 처리 타임아웃", documentId, textbookId, e);
+          log.error("교재({}) 변환 처리 타임아웃", textbookId, e);
           textbook.setConvertProcessStatus(ConvertProcessStatus.FAILED);
           textbookRepository.save(textbook);
         } catch (Exception e) {
-          log.error("문서({})->교재({}) 변환 일부 페이지 처리 실패", documentId, textbookId, e);
+          log.error("교재({}) 변환 일부 페이지 처리 실패", textbookId, e);
 
           // 완료된 페이지 수
           long completedPages = pageRepository.findByTextbookId(textbookId).stream()
@@ -225,16 +234,16 @@ public class DocumentProcessService {
           // 미처리된 페이지 수
           long pendingPages = rawPages.size() - completedPages - failedPages;
 
-          log.error("문서({})->교재({}) 변환 처리 결과 - 총 페이지: {}, 완료: {}, 실패: {}, 미처리: {}",
-              documentId, textbookId, rawPages.size(), completedPages, failedPages, pendingPages);
+          log.error("교재({}) 변환 처리 결과 - 총 페이지: {}, 완료: {}, 실패: {}, 미처리: {}",
+              textbookId, rawPages.size(), completedPages, failedPages, pendingPages);
 
           if (completedPages > 0 && completedPages == rawPages.size()) {
             textbook.setConvertProcessStatus(ConvertProcessStatus.COMPLETED);
-            log.info("문서({})->교재({}) 모든 변환 처리 완료", documentId, textbookId);
+            log.info("교재({}) 모든 변환 처리 완료", textbookId);
           } else {
             textbook.setConvertProcessStatus(ConvertProcessStatus.FAILED);
             log.error("문서 ID: {}의 처리가 실패했습니다. 일부 페이지({}/{})만 처리되었습니다.",
-                documentId, completedPages, rawPages.size());
+                textbookId, completedPages, rawPages.size());
           }
 
           textbookRepository.save(textbook);
@@ -258,12 +267,12 @@ public class DocumentProcessService {
         }
       }
     } catch (Exception e) {
-      log.error("문서 처리 중 오류 발생: 문서 ID: {}", documentId, e);
+      log.error("문서 처리 중 오류 발생: 교재 ID: {}", textbookId, e);
       Textbook textbook = textbookRepository.findById(textbookId).orElse(null);
       if (textbook != null) {
         textbook.setConvertProcessStatus(ConvertProcessStatus.FAILED);
         textbookRepository.save(textbook);
-        log.error("문서 ID: {}의 상태를 FAILED로 변경했습니다.", documentId);
+        log.error("교재({})의 상태를 FAILED로 변경했습니다.", textbookId);
       }
     }
   }
@@ -295,20 +304,22 @@ public class DocumentProcessService {
       log.info("교재({}) 페이지({}) 처리 시작", textbook.getId(), pageNumber);
 
       // ThreadLocal에 문서 정보 설정
-      DocumentProcessHolder.setDocumentId(textbook.getId());
+      DocumentProcessHolder.setTextbookId(textbook.getId());
       DocumentProcessHolder.setGuardianId(textbook.getGuardian().getId());
       DocumentProcessHolder.setPageNumber(pageNumber);
 
       try {
-        Optional<Page> existingPage = pageRepository.findByTextbookAndPageNumber(textbook, pageNumber);
+        Optional<Page> existingPage = pageRepository.findByTextbookAndPageNumber(textbook,
+            pageNumber);
         if (existingPage.isPresent() &&
             existingPage.get().getProcessingStatus() == ConvertProcessStatus.COMPLETED) {
-          log.info("이미 처리된 페이지({}): 문서({})", pageNumber, textbook.getId());
+          log.info("이미 처리된 페이지({}): 교재({})", pageNumber, textbook.getId());
           return;
         }
 
         // 1. OpenAI 번역 수행
-        String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent, textbook.getMaxGrade());
+        String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent,
+            textbook.getMaxGrade());
 
         // 2. 번역된 텍스트로 AI Block 처리
         PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(
@@ -597,20 +608,20 @@ public class DocumentProcessService {
   }
 
   @Transactional
-  public Document retryDocumentProcessing(Long documentId) {
-    Document document = documentRepository.findById(documentId)
+  public void retryConvertProcessing(Long textbookId) throws IOException {
+    Textbook textbook = textbookRepository.findById(textbookId)
         .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
 
-    /*if (document.getProcessStatus() != ConvertProcessStatus.FAILED) {
+    if (textbook.getConvertProcessStatus() != ConvertProcessStatus.FAILED) {
       throw new IllegalStateException("실패한 문서만 재처리할 수 있습니다.");
     }
 
-    document.setProcessStatus(ConvertProcessStatus.PENDING);
-    document = documentRepository.save(document);
+    textbook.setConvertProcessStatus(ConvertProcessStatus.PENDING);
+    textbookRepository.save(textbook);
 
-    CompletableFuture.runAsync(() -> processDocumentAsync(documentId), taskExecutor);*/
+    List<String> rawPages = pdfParserService.parsePages(textbook.getDocument().getFilePath());
 
-    return document;
+    CompletableFuture.runAsync(() -> processConvertAsync(textbookId, rawPages), taskExecutor);
   }
 
   // 배치 생성 메서드 (추가)

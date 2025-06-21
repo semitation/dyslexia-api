@@ -20,8 +20,8 @@ public class PageDto {
     @Schema(description = "페이지 ID", example = "1")
     private Long id;
 
-    @Schema(description = "문서 ID", example = "1")
-    private Long documentId;
+    @Schema(description = "교재 ID", example = "1")
+    private Long textbookId;
 
     @Schema(description = "페이지 번호", example = "1")
     private Integer pageNumber;

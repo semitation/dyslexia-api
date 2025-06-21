@@ -15,7 +15,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "pages", 
-        uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "page_number"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"textbook_id", "page_number"}))
 @Getter
 @NoArgsConstructor
 public class Page {
@@ -88,7 +88,7 @@ public class Page {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void setDocument(Textbook textbook) {
+    public void setTextbook(Textbook textbook) {
         this.textbook = textbook;
     }
 

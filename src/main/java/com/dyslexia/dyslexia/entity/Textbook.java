@@ -63,7 +63,7 @@ public class Textbook {
   @Column(nullable = false)
   private LocalDateTime updatedAt;
 
-  @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+  @OneToMany(mappedBy = "textbook", cascade = CascadeType.ALL, orphanRemoval = true)
   private final List<Page> pages = new ArrayList<>();
 
   @Builder
@@ -96,7 +96,7 @@ public class Textbook {
   public void addPage(Page page) {
     this.pages.add(page);
     if (page.getTextbook() != this) {
-      page.setDocument(this);
+      page.setTextbook(this);
     }
   }
 }

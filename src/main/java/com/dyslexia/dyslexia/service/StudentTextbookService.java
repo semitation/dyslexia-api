@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class StudentDocumentService {
+public class StudentTextbookService {
 
     private final StudentRepository studentRepository;
     private final DocumentRepository documentRepository;
@@ -29,7 +29,7 @@ public class StudentDocumentService {
     private final PageImageRepository pageImageRepository;
     private final StudentPageProgressRepository studentPageProgressRepository;
     private final PageAccessibilitySettingsRepository pageAccessibilitySettingsRepository;
-    private final StudentDocumentAssignmentRepository studentDocumentAssignmentRepository;
+    private final StudentTextbookAssignmentRepository studentTextbookAssignmentRepository;
 
     @Transactional(readOnly = true)
     public ResponseEntity<PageDetailResponseDto> getPageDetail(Long studentId, Long pageId) {
@@ -38,9 +38,10 @@ public class StudentDocumentService {
         Page page = pageRepository.findById(pageId)
             .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
         
-        Document document = page.getDocument();
-        boolean hasAccess = studentDocumentAssignmentRepository
-            .findByStudentIdAndDocumentId(studentId, document.getId())
+        Textbook textbook = page.getTextbook();
+
+        boolean hasAccess = studentTextbookAssignmentRepository
+            .findByStudentIdAndTextbookId(studentId, textbook.getId())
             .isPresent();
         
         if (!hasAccess) {
@@ -83,9 +84,9 @@ public class StudentDocumentService {
         Student student = studentRepository.findById(studentId)
             .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
         
-        Document document = page.getDocument();
-        boolean hasAccess = studentDocumentAssignmentRepository
-            .findByStudentIdAndDocumentId(studentId, document.getId())
+        Textbook textbook = page.getTextbook();
+        boolean hasAccess = studentTextbookAssignmentRepository
+            .findByStudentIdAndTextbookId(studentId, textbook.getId())
             .isPresent();
         
         if (!hasAccess) {
@@ -142,9 +143,9 @@ public class StudentDocumentService {
         Student student = studentRepository.findById(studentId)
             .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
         
-        Document document = page.getDocument();
-        boolean hasAccess = studentDocumentAssignmentRepository
-            .findByStudentIdAndDocumentId(studentId, document.getId())
+        Textbook textbook = page.getTextbook();
+        boolean hasAccess = studentTextbookAssignmentRepository
+            .findByStudentIdAndTextbookId(studentId, textbook.getId())
             .isPresent();
         
         if (!hasAccess) {
@@ -157,7 +158,7 @@ public class StudentDocumentService {
         }
         
         if (Boolean.TRUE.equals(request.getApplyToEntireDocument())) {
-            List<Page> documentPages = pageRepository.findByDocumentId(document.getId());
+            List<Page> documentPages = pageRepository.findByTextbookId(textbook.getId());
             
             for (Page docPage : documentPages) {
                 updateSinglePageSettings(student, docPage, request);
@@ -188,7 +189,7 @@ public class StudentDocumentService {
                 PageAccessibilitySettings.builder()
                     .student(student)
                     .page(page)
-                    .document(page.getDocument())
+                    .document(page.getTextbook().getDocument())
                     .build()
             );
         
