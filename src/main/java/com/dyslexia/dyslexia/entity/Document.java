@@ -79,9 +79,4 @@ public class Document {
     this.metadata = metadata;
     this.uploadedAt = LocalDateTime.now();
   }
-
-  @PreUpdate
-  public void preUpdate() {
-    this.uploadedAt = LocalDateTime.now();
-  }
 }
