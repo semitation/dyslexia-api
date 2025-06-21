@@ -4,7 +4,6 @@ import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.StudentDocumentListResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Student;
-import com.dyslexia.dyslexia.entity.StudentDocumentAssignment;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;

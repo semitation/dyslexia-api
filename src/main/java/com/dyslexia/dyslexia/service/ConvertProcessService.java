@@ -347,7 +347,7 @@ public class ConvertProcessService {
 
         // 3-3. 텍스트 블록만 추출
         List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
-            .filter(block -> block instanceof TextBlock textBlock &&
+            .filter(block -> block instanceof TextBlock &&
                              block.getType() != null &&
                              block.getType().name().equals("TEXT"))
             .map(block -> (TextBlock) block)
@@ -503,7 +503,7 @@ public class ConvertProcessService {
       // JSON String을 Map으로 변환
       Map<String, List<Map<String, Object>>> blockAnalysisMap =
           objectMapper.readValue(batchAnalysisJson,
-              new TypeReference<Map<String, List<Map<String, Object>>>>() {
+              new TypeReference<>() {
               });
 
       // 2. 모든 블록에서 추출된 단어 수집 (중복 제거)

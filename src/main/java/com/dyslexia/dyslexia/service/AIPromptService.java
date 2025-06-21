@@ -141,12 +141,10 @@ public class AIPromptService {
         log.info("역직렬화된 블록 수: {}", blockImpls.size());
         
         // 각 블록의 타입 로깅
-        blockImpls.forEach(block -> {
-            log.info("블록 정보 - ID: {}, Raw Type: {}, JSON: {}", 
-                block.getId(), 
-                block.getType(), 
-                block);
-        });
+        blockImpls.forEach(block -> log.info("블록 정보 - ID: {}, Raw Type: {}, JSON: {}",
+            block.getId(),
+            block.getType(),
+            block));
         
         // Stream을 사용하여 블록 처리 및 이미지 생성을 통합
         List<Block> blocks = blockImpls.stream()
@@ -347,14 +345,16 @@ public class AIPromptService {
 
             Map<String, String> systemMessage = new HashMap<>();
             systemMessage.put("role", "system");
-            systemMessage.put("content", "당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고, " +
-                "설명하는 이미지를 생성하는 전문가입니다. 생성하는 이미지 설명에서는 다음 규칙을 반드시 지켜주세요:\n" +
-                "1. 고유명사나 캐릭터 이름은 일반적인 용어로 대체하세요 (예: '앨리스' → '소녀', '에스콰이어' → '호칭')\n" +
-                "2. 문맥을 모르면 이해하기 어려운 용어는 설명을 추가하세요\n" +
-                "3. 초등학생이 이해할 수 있는 보편적인 개념과 표현만 사용하세요\n\n" +
-                "반드시 아래 JSON 배열 형식으로만 응답해 주세요:\n" +
-                "[{\"description\": \"생성할 이미지의 설명\", \"imageType\": \"CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION\", " +
-                "\"conceptReference\": \"관련 개념\", \"altText\": \"이미지 대체 텍스트\", \"position\": {\"page\": 페이지번호}}]");
+            systemMessage.put("content", """
+                당신은 교육 자료에서 시각적 지원이 필요한 개념을 식별하고,
+                설명하는 이미지를 생성하는 전문가입니다. 생성하는 이미지 설명에서는 다음 규칙을 반드시 지켜주세요:
+                1. 고유명사나 캐릭터 이름은 일반적인 용어로 대체하세요 (예: '앨리스' → '소녀', '에스콰이어' → '호칭')
+                2. 문맥을 모르면 이해하기 어려운 용어는 설명을 추가하세요
+                3. 초등학생이 이해할 수 있는 보편적인 개념과 표현만 사용하세요
+                
+                반드시 아래 JSON 배열 형식으로만 응답해 주세요:
+                [{"description": "생성할 이미지의 설명", "imageType": "CONCEPT_VISUALIZATION | DIAGRAM | COMPARISON_CHART | EXAMPLE_ILLUSTRATION", \
+                "conceptReference": "관련 개념", "altText": "이미지 대체 텍스트", "position": {"page": 페이지번호}}]""");
             messages.add(systemMessage);
 
             StringBuilder promptBuilder = new StringBuilder();
@@ -404,7 +404,7 @@ public class AIPromptService {
             // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
             Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
             Matcher m = p.matcher(content2);
-            StringBuffer sb = new StringBuffer();
+            StringBuilder sb = new StringBuilder();
             while (m.find()) {
                 m.appendReplacement(sb, m.group(1) + ".0");
             }
@@ -529,7 +529,7 @@ public class AIPromptService {
               
               String imageUrl = null;
               if (output != null && !output.isNull()) {
-                if (output.isArray() && output.size() > 0) {
+                if (output.isArray() && !output.isEmpty()) {
                   imageUrl = output.get(0).asText();
                 } else if (output.isTextual()) {
                   imageUrl = output.asText();

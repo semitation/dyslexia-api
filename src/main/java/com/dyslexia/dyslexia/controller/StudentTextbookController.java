@@ -134,7 +134,7 @@ public class StudentTextbookController {
       }
 
       // 교재 존재 여부 확인
-      Textbook textbook = textbookRepository.findById(textbookId)
+      textbookRepository.findById(textbookId)
           .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
 
       // 페이지 목록 조회

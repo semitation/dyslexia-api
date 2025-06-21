@@ -13,7 +13,7 @@ spring:
   jpa:
     database: postgresql
     hibernate:
-      ddl-auto: create
+      ddl-auto: create-drop
       default_batch_fetch_size: 100
 
   servlet:
@@ -81,13 +81,3 @@ replicate:
     url: https://api.replicate.com/v1/predictions
     key: ${REPLICATE_API_KEY}
     model: recraft-ai/recraft-v3
-
-logging:
-  file:
-    path: /var/log/dyslexia-app/
-    name: ${logging.file.path}app.log
-
-  pattern:
-    file: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"
-
-

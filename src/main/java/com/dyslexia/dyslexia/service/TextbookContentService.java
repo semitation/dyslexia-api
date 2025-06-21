@@ -3,7 +3,6 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.PageImage;
 import com.dyslexia.dyslexia.entity.PageTip;
-import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
@@ -19,44 +18,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TextbookContentService {
 
-    private final TextbookRepository textbookRepository;
-    private final PageRepository pageRepository;
-    private final PageTipRepository pageTipRepository;
-    private final PageImageRepository pageImageRepository;
-    @Value("${app.upload.dir:uploads}")
-    private String uploadDir;
+  private final TextbookRepository textbookRepository;
+  private final PageRepository pageRepository;
+  private final PageTipRepository pageTipRepository;
+  private final PageImageRepository pageImageRepository;
 
-    public List<Page> getPagesByTextbookId(Long textbookId, Integer pageNumber) {
-        if (pageNumber != null) {
-            return textbookRepository.findById(textbookId)
-                    .map(textbook -> pageRepository.findByTextbookAndPageNumber(textbook, pageNumber)
-                            .map(List::of)
-                            .orElse(List.of()))
-                    .orElse(List.of());
-        }
-        return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId);
+  public List<Page> getPagesByTextbookId(Long textbookId, Integer pageNumber) {
+    if (pageNumber != null) {
+      return textbookRepository.findById(textbookId)
+          .map(textbook -> pageRepository.findByTextbookAndPageNumber(textbook, pageNumber)
+              .map(List::of)
+              .orElse(List.of()))
+          .orElse(List.of());
     }
+    return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId);
+  }
 
-    public List<PageTip> getPageTipsByPageId(Long pageId) {
-        return pageTipRepository.findByPageId(pageId);
-    }
+  public List<PageTip> getPageTipsByPageId(Long pageId) {
+    return pageTipRepository.findByPageId(pageId);
+  }
 
-    public List<PageImage> getPageImagesByPageId(Long pageId) {
-        return pageImageRepository.findByPageId(pageId);
-    }
-
-//    public byte[] getImage(Long guardianId, Long documentId, Integer pageNumber, String blockId) {
-//        String imagePath = String.format("%s/%s/%s/%s/%s", uploadDir, guardianId, documentId, pageNumber, blockId + ".svg");
-//
-//        try {
-//            Path filePath = Paths.get(imagePath);
-//            if (Files.exists(filePath)) {
-//                return Files.readAllBytes(filePath);
-//            } else {
-//                throw new RuntimeException("Image not found");
-//            }
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//    }
+  public List<PageImage> getPageImagesByPageId(Long pageId) {
+    return pageImageRepository.findByPageId(pageId);
+  }
 }
