@@ -7,7 +7,7 @@ import java.util.List;
 
 @Repository
 public interface VocabularyAnalysisRepository extends JpaRepository<VocabularyAnalysis, Long> {
-    List<VocabularyAnalysis> findByDocumentId(Long documentId);
-    List<VocabularyAnalysis> findByDocumentIdAndPageNumber(Long documentId, Integer pageNumber);
-    List<VocabularyAnalysis> findByDocumentIdAndPageNumberAndBlockId(Long documentId, Integer pageNumber, String blockId);
+    List<VocabularyAnalysis> findByTextbookId(Long textbookId);
+    List<VocabularyAnalysis> findByTextbookIdAndPageNumber(Long textbookId, Integer pageNumber);
+    List<VocabularyAnalysis> findByTextbookIdAndPageNumberAndBlockId(Long textbookId, Integer pageNumber, String blockId);
 } 

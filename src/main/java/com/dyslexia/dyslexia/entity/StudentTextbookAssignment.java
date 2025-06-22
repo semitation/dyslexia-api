@@ -9,11 +9,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "student_document_assignments",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "document_id"}))
+@Table(name = "student_textbook_assignments",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"student_id", "textbook_id"}))
 @Getter
 @NoArgsConstructor
-public class StudentDocumentAssignment {
+public class StudentTextbookAssignment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -24,8 +24,8 @@ public class StudentDocumentAssignment {
     private Student student;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id", nullable = false)
-    private Document document;
+    @JoinColumn(name = "textbook_id", nullable = false)
+    private Textbook textbook;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_by", nullable = false)
@@ -57,12 +57,12 @@ public class StudentDocumentAssignment {
     private LocalDateTime updatedAt;
 
     @Builder
-    public StudentDocumentAssignment(Student student, Document document, Guardian assignedBy,
+    public StudentTextbookAssignment(Student student, Textbook textbook, Guardian assignedBy,
                                     Integer currentPageNumber, LocalDateTime dueDate,
                                     CompletionStatus completionStatus, Integer totalLearningTime,
                                     LocalDateTime assignedAt, String notes) {
         this.student = student;
-        this.document = document;
+        this.textbook = textbook;
         this.assignedBy = assignedBy;
         this.currentPageNumber = currentPageNumber != null ? currentPageNumber : 1;
         this.assignedAt = assignedAt != null ? assignedAt : LocalDateTime.now();

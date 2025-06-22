@@ -1,6 +1,6 @@
 package com.dyslexia.dyslexia.entity;
 
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,7 +15,7 @@ import java.util.List;
 
 @Entity
 @Table(name = "pages", 
-        uniqueConstraints = @UniqueConstraint(columnNames = {"document_id", "page_number"}))
+        uniqueConstraints = @UniqueConstraint(columnNames = {"textbook_id", "page_number"}))
 @Getter
 @NoArgsConstructor
 public class Page {
@@ -25,8 +25,8 @@ public class Page {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "document_id", nullable = false)
-    private Document document;
+    @JoinColumn(name = "textbook_id", nullable = false)
+    private Textbook textbook;
 
     @Column(name = "page_number", nullable = false)
     private Integer pageNumber;
@@ -40,7 +40,7 @@ public class Page {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "processing_status", nullable = false)
-    private DocumentProcessStatus processingStatus = DocumentProcessStatus.PENDING;
+    private ConvertProcessStatus processingStatus = ConvertProcessStatus.PENDING;
 
     @Column(name = "section_title", columnDefinition = "TEXT")
     private String sectionTitle;
@@ -67,10 +67,10 @@ public class Page {
     private List<PageImage> pageImages = new ArrayList<>();
 
     @Builder
-    public Page(Document document, Integer pageNumber, String originalContent, JsonNode processedContent,
+    public Page(Textbook textbook, Integer pageNumber, String originalContent, JsonNode processedContent,
                String sectionTitle, Integer readingLevel, Integer wordCount, Float complexityScore,
-               DocumentProcessStatus processingStatus) {
-        this.document = document;
+               ConvertProcessStatus processingStatus) {
+        this.textbook = textbook;
         this.pageNumber = pageNumber;
         this.originalContent = originalContent;
         this.processedContent = processedContent;
@@ -78,7 +78,7 @@ public class Page {
         this.readingLevel = readingLevel;
         this.wordCount = wordCount;
         this.complexityScore = complexityScore;
-        this.processingStatus = processingStatus != null ? processingStatus : DocumentProcessStatus.PENDING;
+        this.processingStatus = processingStatus != null ? processingStatus : ConvertProcessStatus.PENDING;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -88,11 +88,11 @@ public class Page {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void setDocument(Document document) {
-        this.document = document;
+    public void setTextbook(Textbook textbook) {
+        this.textbook = textbook;
     }
 
-    public void setProcessingStatus(DocumentProcessStatus processingStatus) {
+    public void setProcessingStatus(ConvertProcessStatus processingStatus) {
         this.processingStatus = processingStatus;
     }
 

@@ -1,6 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,23 +33,7 @@ public class DocumentDto {
     @Schema(description = "파일 크기(바이트)", example = "1024000")
     private Long fileSize;
 
-    @Schema(description = "페이지 수", example = "10")
-    private Integer pageCount;
-
-    @Schema(description = "학년", example = "GRADE_3")
-    private Grade grade;
-
-    @Schema(description = "과목 경로", example = "science/ecology")
-    private String subjectPath;
-
-    @Schema(description = "처리 상태", example = "COMPLETED")
-    private DocumentProcessStatus processStatus;
-
-    @Schema(description = "생성 시간")
+    @Schema(description = "업로드 시간")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime createdAt;
-
-    @Schema(description = "수정 시간")
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime updatedAt;
+    private LocalDateTime uploadedAt;
 } 

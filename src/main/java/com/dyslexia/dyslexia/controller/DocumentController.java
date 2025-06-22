@@ -3,9 +3,8 @@ package com.dyslexia.dyslexia.controller;
 import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.DocumentResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
-import com.dyslexia.dyslexia.enums.DocumentProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
-import com.dyslexia.dyslexia.service.DocumentProcessService;
+import com.dyslexia.dyslexia.service.ConvertProcessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -21,8 +20,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Tag(name = "Document", description = "PDF 문서 관리 API")
 @RestController
@@ -31,7 +28,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class DocumentController {
 
-    private final DocumentProcessService documentProcessService;
+    private final ConvertProcessService convertProcessService;
 
     @Operation(summary = "PDF 문서 업로드", description = "보호자가 PDF 문서를 업로드하고 처리를 시작합니다.")
     @ApiResponses({
@@ -42,7 +39,7 @@ public class DocumentController {
     })
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<DocumentResponseDto> uploadDocument(
-            @Parameter(description = "보호자 ID", required = true) 
+            @Parameter(description = "보호자 ID", required = true)
             @RequestParam("guardianId") Long guardianId,
             
             @Parameter(description = "PDF 파일", required = true) 
@@ -70,7 +67,7 @@ public class DocumentController {
                 );
             }
             
-            Document document = documentProcessService.uploadDocument(guardianId, file, title, grade, subjectPath);
+            Document document = convertProcessService.uploadDocument(guardianId, file, title, grade);
             
             DocumentResponseDto responseDto = DocumentResponseDto.builder()
                 .success(true)
@@ -106,12 +103,7 @@ public class DocumentController {
             .title(document.getTitle())
             .originalFilename(document.getOriginalFilename())
             .fileSize(document.getFileSize())
-            .pageCount(document.getPageCount())
-            .grade(document.getGrade())
-            .subjectPath(document.getSubjectPath())
-            .processStatus(document.getProcessStatus())
-            .createdAt(document.getCreatedAt())
-            .updatedAt(document.getUpdatedAt())
+            .uploadedAt(document.getUploadedAt())
             .build();
     }
 } 

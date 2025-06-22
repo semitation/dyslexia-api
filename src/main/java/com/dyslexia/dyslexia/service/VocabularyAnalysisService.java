@@ -17,15 +17,15 @@ public class VocabularyAnalysisService {
     private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
 
     @Transactional(readOnly = true)
-    public List<VocabularyAnalysis> searchVocabularyAnalysis(Long documentId, Integer pageNumber, String blockId) {
-        log.debug("어휘 분석 검색: documentId={}, pageNumber={}, blockId={}", documentId, pageNumber, blockId);
+    public List<VocabularyAnalysis> searchVocabularyAnalysis(Long textbookId, Integer pageNumber, String blockId) {
+        log.debug("어휘 분석 검색: textbookId={}, pageNumber={}, blockId={}", textbookId, pageNumber, blockId);
         
         if (blockId != null && !blockId.isEmpty()) {
-            return vocabularyAnalysisRepository.findByDocumentIdAndPageNumberAndBlockId(documentId, pageNumber, blockId);
+            return vocabularyAnalysisRepository.findByTextbookIdAndPageNumberAndBlockId(textbookId, pageNumber, blockId);
         } else if (pageNumber != null) {
-            return vocabularyAnalysisRepository.findByDocumentIdAndPageNumber(documentId, pageNumber);
+            return vocabularyAnalysisRepository.findByTextbookIdAndPageNumber(textbookId, pageNumber);
         } else {
-            return vocabularyAnalysisRepository.findByDocumentId(documentId);
+            return vocabularyAnalysisRepository.findByTextbookId(textbookId);
         }
     }
 } 
