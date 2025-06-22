@@ -4,13 +4,13 @@ import com.dyslexia.dyslexia.dto.DocumentAssignmentRequestDto;
 import com.dyslexia.dyslexia.dto.ResponseDto;
 import com.dyslexia.dyslexia.dto.StudentTextbookListResponseDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.StudentTextbookAssignment;
-import com.dyslexia.dyslexia.entity.Teacher;
 import com.dyslexia.dyslexia.entity.Textbook;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.StudentTextbookAssignmentRepository;
-import com.dyslexia.dyslexia.repository.TeacherRepository;
 import com.dyslexia.dyslexia.repository.TextbookRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,8 +39,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Slf4j
 public class TeacherTextbookController {
 
+  private final GuardianRepository guardianRepository;
   private final TextbookRepository textbookRepository;
-  private final TeacherRepository teacherRepository;
   private final StudentRepository studentRepository;
   private final StudentTextbookAssignmentRepository assignmentRepository;
 
@@ -74,7 +74,7 @@ public class TeacherTextbookController {
       List<TextbookDto> textbookDtos = textbooks.stream()
           .map(textbook -> TextbookDto.builder()
               .id(textbook.getId())
-              .teacherId(textbook.getTeacher().getId())
+              .guardianId(textbook.getGuardian().getId())
               .title(textbook.getTitle())
               .createdAt(textbook.getCreatedAt())
               .updatedAt(textbook.getUpdatedAt())
@@ -111,12 +111,12 @@ public class TeacherTextbookController {
   public ResponseEntity<ResponseDto> assignTextbook(
       @RequestBody DocumentAssignmentRequestDto request) {
 
-    log.info("교재 할당 요청: 선생님({}) 학생({}) 교재({})",
-        request.getTeacherId(), request.getStudentId(), request.getTextbookId());
+    log.info("교재 할당 요청: 보호자({}) 학생({}) 교재({})",
+        request.getGuardianId(), request.getStudentId(), request.getTextbookId());
 
     try {
       // 선생님 존재 여부 확인
-      Teacher teacher = teacherRepository.findById(request.getTeacherId())
+      Guardian guardian = guardianRepository.findById(request.getGuardianId())
           .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
 
       // 학생 존재 여부 확인
@@ -144,7 +144,7 @@ public class TeacherTextbookController {
       StudentTextbookAssignment assignment = StudentTextbookAssignment.builder()
           .student(student)
           .textbook(textbook)
-          .assignedBy(teacher)
+          .assignedBy(guardian)
           .assignedAt(LocalDateTime.now())
           .dueDate(request.getDueDate())
           .notes(request.getNotes())
@@ -207,7 +207,7 @@ public class TeacherTextbookController {
           .orElseThrow(() -> new IllegalArgumentException("할당된 교재를 찾을 수 없습니다."));
 
       // 할당한 선생님인지 확인
-      if (!assignment.getTeacher().getId().equals(teacherId)) {
+      if (!assignment.getGuardian().getId().equals(teacherId)) {
         return ResponseEntity.status(403).body(
             ResponseDto.builder()
                 .success(false)
@@ -281,7 +281,7 @@ public class TeacherTextbookController {
             Textbook textbook = assignment.getTextbook();
             return TextbookDto.builder()
                 .id(textbook.getId())
-                .teacherId(textbook.getTeacher().getId())
+                .guardianId(textbook.getGuardian().getId())
                 .title(textbook.getTitle())
                 .pageCount(textbook.getPageCount())
                 .createdAt(textbook.getCreatedAt())

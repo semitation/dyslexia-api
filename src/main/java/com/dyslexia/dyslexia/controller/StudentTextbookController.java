@@ -76,7 +76,7 @@ public class StudentTextbookController {
 
             return TextbookDto.builder()
                 .id(textbook.getId())
-                .teacherId(textbook.getTeacher().getId())
+                .guardianId(textbook.getGuardian().getId())
                 .title(textbook.getTitle())
                 .updatedAt(textbook.getUpdatedAt())
                 .build();

@@ -9,7 +9,7 @@ import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.ImageType;
 import com.dyslexia.dyslexia.enums.TermType;
 import com.dyslexia.dyslexia.util.ChatRequestBuilder;
-import com.dyslexia.dyslexia.util.DocumentProcessHolder;
+import com.dyslexia.dyslexia.util.ConvertProcessHolder;
 import com.dyslexia.dyslexia.util.PromptBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -577,9 +577,9 @@ public class AIPromptService {
 
   private String saveImageToLocalFile(String imageUrl, String blockId) {
     try {
-      String guardianId = DocumentProcessHolder.getGuardianId();
-      Long textbookId = DocumentProcessHolder.getTextbookId();
-      Integer pageNumber = DocumentProcessHolder.getPageNumber();
+      Long guardianId = ConvertProcessHolder.getGuardianId();
+      Long textbookId = ConvertProcessHolder.getTextbookId();
+      Integer pageNumber = ConvertProcessHolder.getPageNumber();
 
       if (guardianId == null || textbookId == null) {
         log.error("이미지 저장 실패: guardianId({}) 또는 textbookId({})가 없습니다.", guardianId, textbookId);

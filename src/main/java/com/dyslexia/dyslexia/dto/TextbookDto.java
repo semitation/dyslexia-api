@@ -18,8 +18,8 @@ public class TextbookDto {
     @Schema(description = "교재 ID", example = "1")
     private Long id;
 
-    @Schema(description = "선생님 ID", example = "1")
-    private Long teacherId;
+    @Schema(description = "보호자 ID", example = "1")
+    private Long guardianId;
 
     @Schema(description = "교재 제목", example = "생태계와 환경")
     private String title;

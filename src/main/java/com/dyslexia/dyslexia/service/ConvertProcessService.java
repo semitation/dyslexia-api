@@ -6,21 +6,21 @@ import com.dyslexia.dyslexia.domain.pdf.TextBlock;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
 import com.dyslexia.dyslexia.entity.Document;
+import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Textbook;
 import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
-import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
-import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.repository.TextbookRepository;
 import com.dyslexia.dyslexia.service.AIPromptService.PageBlockAnalysisResult;
 import com.dyslexia.dyslexia.service.AIPromptService.TermInfo;
-import com.dyslexia.dyslexia.util.DocumentProcessHolder;
+import com.dyslexia.dyslexia.util.ConvertProcessHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -58,6 +58,7 @@ public class ConvertProcessService {
   private static final int MAX_CONCURRENT_PAGES = 4;
   private final DocumentRepository documentRepository;
   private final TextbookRepository textbookRepository;
+  private final GuardianRepository guardianRepository;
   private final PageRepository pageRepository;
   private final PageTipRepository pageTipRepository;
   private final PageImageRepository pageImageRepository;
@@ -70,37 +71,32 @@ public class ConvertProcessService {
   private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
   private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
   // 스레드 풀 (어휘 분석 전용)
-  private final ExecutorService vocabularyAnalysisExecutor =
-      Executors.newFixedThreadPool(
-          Math.min(Runtime.getRuntime().availableProcessors() * 2, 16));  // 최대 16개로 제한
+  private final ExecutorService vocabularyAnalysisExecutor = Executors.newFixedThreadPool(
+      Math.min(Runtime.getRuntime().availableProcessors() * 2, 16));  // 최대 16개로 제한
 
 
-    @Transactional
-    public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade) throws IOException {
-        Guardian guardian = guardianRepository.findById(guardianId)
-            .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
+  @Transactional
+  public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade)
+      throws IOException {
+    Guardian guardian = guardianRepository.findById(guardianId)
+        .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
 
     String originalFilename = file.getOriginalFilename();
     String fileExtension = extractExtension(originalFilename);
 
-    log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자 ID: {}",
-          originalFilename, guardianId);
+    log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자 ID: {}", originalFilename, guardianId);
 
-        Document document = Document.builder()
-            .guardian(guardian)
-            .title(title)
-            .originalFilename(originalFilename)
-            .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
-            .fileSize(file.getSize())
-            .mimeType(file.getContentType())
-            .build();
+    Document document = Document.builder().guardian(guardian).title(title)
+        .originalFilename(originalFilename)
+        .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
+        .fileSize(file.getSize()).mimeType(file.getContentType()).build();
 
     document = documentRepository.save(document);
 
     String uniqueFilename = UUID.randomUUID() + fileExtension;
 
-        String filePath = storageService.store(file, uniqueFilename, guardianId, document.getId());
-        log.info("파일 저장 경로: {}", filePath);
+    String filePath = storageService.store(file, uniqueFilename, guardianId, document.getId());
+    log.info("파일 저장 경로: {}", filePath);
 
     document.setFilePath(filePath);
 
@@ -129,13 +125,8 @@ public class ConvertProcessService {
       Document document = documentRepository.findById(documentId)
           .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
 
-      Textbook textbook = Textbook.builder()
-          .document(document)
-          .teacher(document.getTeacher())
-          .title(document.getTitle())
-          .pageCount(pageCount)
-          .maxGrade(maxGrade)
-          .minGrade(minGrade)
+      Textbook textbook = Textbook.builder().document(document).guardian(document.getGuardian())
+          .title(document.getTitle()).pageCount(pageCount).maxGrade(maxGrade).minGrade(minGrade)
           .build();
 
       textbook.setConvertProcessStatus(ConvertProcessStatus.PROCESSING);
@@ -167,8 +158,7 @@ public class ConvertProcessService {
        * 둘 중 작은 값을 선택하여 병렬 처리 스레드 수를 결정하는 이유는 시스템 자원을 효율적으로 사용하기 위함
        */
       ExecutorService pageProcessorExecutor = Executors.newFixedThreadPool(
-          Math.min(MAX_CONCURRENT_PAGES, Runtime.getRuntime().availableProcessors())
-      );
+          Math.min(MAX_CONCURRENT_PAGES, Runtime.getRuntime().availableProcessors()));
 
       try {
         // 각 페이지를 병렬로 처리
@@ -176,32 +166,28 @@ public class ConvertProcessService {
           final int pageNumber = i + 1;
           final String pageContent = rawPages.get(i);
 
-          CompletableFuture<Void> pageFuture = CompletableFuture
-              .runAsync(() -> {
-                try {
-                  log.info("교재({}) 변환 병렬 처리 시작 - 페이지 번호: {}", textbookId,
-                      pageNumber);
-                  processPageWithTransaction(textbook, pageNumber, pageContent);
-                  log.info("교재({}) 변환 병렬 처리 완료 - 페이지 번호: {}", textbookId, pageNumber);
-                } catch (Exception e) {
-                  log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbookId, pageNumber, e);
-                  throw e; // 상위 CompletableFuture 에서 처리하도록 재발생
-                }
-              }, pageProcessorExecutor)
-              .exceptionally(ex -> {
-                log.error("교재({}) 변환 병렬 처리 실패 - 페이지 번호: {}", textbookId, pageNumber, ex);
-                // 페이지 상태 업데이트 로직
-                updatePageStatusToFailed(textbook, pageNumber);
-                return null;
-              });
+          CompletableFuture<Void> pageFuture = CompletableFuture.runAsync(() -> {
+            try {
+              log.info("교재({}) 변환 병렬 처리 시작 - 페이지 번호: {}", textbookId, pageNumber);
+              processPageWithTransaction(textbook, pageNumber, pageContent);
+              log.info("교재({}) 변환 병렬 처리 완료 - 페이지 번호: {}", textbookId, pageNumber);
+            } catch (Exception e) {
+              log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbookId, pageNumber, e);
+              throw e; // 상위 CompletableFuture 에서 처리하도록 재발생
+            }
+          }, pageProcessorExecutor).exceptionally(ex -> {
+            log.error("교재({}) 변환 병렬 처리 실패 - 페이지 번호: {}", textbookId, pageNumber, ex);
+            // 페이지 상태 업데이트 로직
+            updatePageStatusToFailed(textbook, pageNumber);
+            return null;
+          });
 
           pageFutures.add(pageFuture);
         }
 
         // 모든 페이지 처리 완료 대기
         CompletableFuture<Void> allPagesFuture = CompletableFuture.allOf(
-            pageFutures.toArray(new CompletableFuture[0])
-        );
+            pageFutures.toArray(new CompletableFuture[0]));
 
         try {
           // 타임아웃 설정 (전체 문서 처리 제한 시간)
@@ -222,27 +208,25 @@ public class ConvertProcessService {
 
           // 완료된 페이지 수
           long completedPages = pageRepository.findByTextbookId(textbookId).stream()
-              .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED)
-              .count();
+              .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED).count();
 
           // 실패한 페이지 수
           long failedPages = pageRepository.findByTextbookId(textbookId).stream()
-              .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.FAILED)
-              .count();
+              .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.FAILED).count();
 
           // 미처리된 페이지 수
           long pendingPages = rawPages.size() - completedPages - failedPages;
 
-          log.error("교재({}) 변환 처리 결과 - 총 페이지: {}, 완료: {}, 실패: {}, 미처리: {}",
-              textbookId, rawPages.size(), completedPages, failedPages, pendingPages);
+          log.error("교재({}) 변환 처리 결과 - 총 페이지: {}, 완료: {}, 실패: {}, 미처리: {}", textbookId,
+              rawPages.size(), completedPages, failedPages, pendingPages);
 
           if (completedPages > 0 && completedPages == rawPages.size()) {
             textbook.setConvertProcessStatus(ConvertProcessStatus.COMPLETED);
             log.info("교재({}) 모든 변환 처리 완료", textbookId);
           } else {
             textbook.setConvertProcessStatus(ConvertProcessStatus.FAILED);
-            log.error("문서 ID: {}의 처리가 실패했습니다. 일부 페이지({}/{})만 처리되었습니다.",
-                textbookId, completedPages, rawPages.size());
+            log.error("문서 ID: {}의 처리가 실패했습니다. 일부 페이지({}/{})만 처리되었습니다.", textbookId, completedPages,
+                rawPages.size());
           }
 
           textbookRepository.save(textbook);
@@ -303,15 +287,15 @@ public class ConvertProcessService {
       log.info("교재({}) 페이지({}) 처리 시작", textbook.getId(), pageNumber);
 
       // ThreadLocal에 문서 정보 설정
-      DocumentProcessHolder.setTextbookId(textbook.getId());
-      DocumentProcessHolder.setGuardianId(textbook.getGuardian().getId());
-      DocumentProcessHolder.setPageNumber(pageNumber);
+      ConvertProcessHolder.setTextbookId(textbook.getId());
+      ConvertProcessHolder.setGuardianId(textbook.getGuardian().getId());
+      ConvertProcessHolder.setPageNumber(pageNumber);
 
       try {
         Optional<Page> existingPage = pageRepository.findByTextbookAndPageNumber(textbook,
             pageNumber);
-        if (existingPage.isPresent() &&
-            existingPage.get().getProcessingStatus() == ConvertProcessStatus.COMPLETED) {
+        if (existingPage.isPresent()
+            && existingPage.get().getProcessingStatus() == ConvertProcessStatus.COMPLETED) {
           log.info("이미 처리된 페이지({}): 교재({})", pageNumber, textbook.getId());
           return;
         }
@@ -345,12 +329,9 @@ public class ConvertProcessService {
         log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
 
         // 3-3. 텍스트 블록만 추출
-        List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream()
-            .filter(block -> block instanceof TextBlock &&
-                             block.getType() != null &&
-                             block.getType().name().equals("TEXT"))
-            .map(block -> (TextBlock) block)
-            .toList();
+        List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream().filter(
+            block -> block instanceof TextBlock && block.getType() != null && block.getType().name()
+                .equals("TEXT")).map(block -> (TextBlock) block).toList();
 
         log.info("textBlock 개수: {}", textBlocks.size());
 
@@ -364,35 +345,29 @@ public class ConvertProcessService {
         for (List<TextBlock> batch : batches) {
           CompletableFuture<List<VocabularyAnalysis>> future = CompletableFuture.supplyAsync(
               () -> analyzeVocabularyBatchImproved(batch, textbook.getId(), pageNumber),
-              vocabularyAnalysisExecutor
-          );
+              vocabularyAnalysisExecutor);
           batchFutures.add(future);
         }
 
         // 3-6. 모든 배치 처리 완료 대기
         CompletableFuture<Void> allBatchesProcessed = CompletableFuture.allOf(
-            batchFutures.toArray(new CompletableFuture[0])
-        );
+            batchFutures.toArray(new CompletableFuture[0]));
 
         // 3-7. 결과 수집 및 저장
         List<VocabularyAnalysis> allEntities;
         try {
-          allEntities = allBatchesProcessed
-              .thenApply(v -> batchFutures.stream()
-                  .map(CompletableFuture::join)
-                  .flatMap(List::stream)
-                  .collect(Collectors.toList())
-              ).get(60, TimeUnit.MINUTES); // 타임아웃 설정
+          allEntities = allBatchesProcessed.thenApply(
+              v -> batchFutures.stream().map(CompletableFuture::join).flatMap(List::stream)
+                  .collect(Collectors.toList())).get(60, TimeUnit.MINUTES); // 타임아웃 설정
 
           // 모든 결과 일괄 저장
           if (!allEntities.isEmpty()) {
             saveVocabularyAnalysisInBatch(allEntities);
-            log.info("어휘 분석 완료: 문서 ID: {}, 페이지 번호: {}, 총 {}개 단어 처리",
-                textbook.getId(), pageNumber, allEntities.size());
+            log.info("어휘 분석 완료: 문서 ID: {}, 페이지 번호: {}, 총 {}개 단어 처리", textbook.getId(), pageNumber,
+                allEntities.size());
           }
         } catch (Exception e) {
-          log.error("배치 비동기 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}",
-              textbook.getId(), pageNumber, e);
+          log.error("배치 비동기 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber, e);
         }
 
         // 4. 메타데이터 추출 (번역된 텍스트 기반)
@@ -455,7 +430,7 @@ public class ConvertProcessService {
         log.info("페이지 처리 완료: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber);
       } finally {
         // ThreadLocal 정리
-        DocumentProcessHolder.clear();
+        ConvertProcessHolder.clear();
       }
 
     } catch (Exception e) {
@@ -469,7 +444,7 @@ public class ConvertProcessService {
       }
 
       // 오류 발생 시에도 ThreadLocal 반드시 정리
-      DocumentProcessHolder.clear();
+      ConvertProcessHolder.clear();
     }
   }
 
@@ -477,15 +452,15 @@ public class ConvertProcessService {
    * 개선된 배치 처리 메서드
    * 여러 텍스트 블록을 배치로 처리하고 음운 분석을 한 번에 수행
    */
-  private List<VocabularyAnalysis> analyzeVocabularyBatchImproved(
-      List<TextBlock> batch, Long textbookId, int pageNumber) {
+  private List<VocabularyAnalysis> analyzeVocabularyBatchImproved(List<TextBlock> batch,
+      Long textbookId, int pageNumber) {
 
     List<VocabularyAnalysis> entities = new ArrayList<>();
     String threadName = Thread.currentThread().getName();
 
     try {
-      log.info("[{} 스레드] 교재({})-페이지({}) 배치 처리 시작 블록 수: {}",
-          threadName, textbookId, pageNumber, batch.size());
+      log.info("[{} 스레드] 교재({})-페이지({}) 배치 처리 시작 블록 수: {}", threadName, textbookId, pageNumber,
+          batch.size());
 
       // 1. 배치 단위로 어휘 분석 → 어려운 어휘 추출
       String batchAnalysisJson = vocabularyAnalysisPromptService // JSON 형식의 String 반환
@@ -500,10 +475,9 @@ public class ConvertProcessService {
        *        └── 블록ID
        */
       // JSON String을 Map으로 변환
-      Map<String, List<Map<String, Object>>> blockAnalysisMap =
-          objectMapper.readValue(batchAnalysisJson,
-              new TypeReference<>() {
-              });
+      Map<String, List<Map<String, Object>>> blockAnalysisMap = objectMapper.readValue(
+          batchAnalysisJson, new TypeReference<>() {
+          });
 
       // 2. 모든 블록에서 추출된 단어 수집 (중복 제거)
       Set<String> allWords = new HashSet<>();
@@ -513,8 +487,8 @@ public class ConvertProcessService {
         }
       }
 
-      log.info("단어 추출 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 단어 수: {}",
-          threadName, textbookId, pageNumber, allWords.size());
+      log.info("단어 추출 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 단어 수: {}", threadName, textbookId,
+          pageNumber, allWords.size());
 
       // 4. 각 블록별로 VocabularyAnalysis 엔티티 생성
       for (TextBlock textBlock : batch) {
@@ -541,23 +515,21 @@ public class ConvertProcessService {
               .endIndex((Integer) wordInfo.getOrDefault("endIndex", null))
               .definition((String) wordInfo.getOrDefault("definition", null))
               .simplifiedDefinition((String) wordInfo.getOrDefault("simplifiedDefinition", null))
-              .examples(wordInfo.get("examples") != null ?
-                  objectMapper.writeValueAsString(wordInfo.get("examples")) : null)
+              .examples(wordInfo.get("examples") != null ? objectMapper.writeValueAsString(
+                  wordInfo.get("examples")) : null)
               .difficultyLevel((String) wordInfo.getOrDefault("difficultyLevel", null))
-              .reason((String) wordInfo.getOrDefault("reason", null))
-              .gradeLevel(wordInfo.get("gradeLevel") instanceof Number ?
-                  ((Number) wordInfo.get("gradeLevel")).intValue() : null)
-              .phonemeAnalysisJson(phonemeAnalysisJson)
-              .createdAt(LocalDateTime.now())
-              .build();
+              .reason((String) wordInfo.getOrDefault("reason", null)).gradeLevel(
+                  wordInfo.get("gradeLevel") instanceof Number ? ((Number) wordInfo.get(
+                      "gradeLevel")).intValue() : null).phonemeAnalysisJson(phonemeAnalysisJson)
+              .createdAt(LocalDateTime.now()).build();
           entities.add(entity);
         }
       }
 
-      log.info("배치 처리 완료 [스레드: {}]: 문서 ID: {}, 페이지: {}, 음운 분석 엔티티 수: {}",
+      log.info("배치 처리 완료 [스레드: {}]: 교재 ID: {}, 페이지: {}, 음운 분석 엔티티 수: {}",
           threadName, textbookId, pageNumber, entities.size());
     } catch (Exception e) {
-      log.error("배치 분석 처리 중 오류 [스레드: {}]: 문서 ID: {}, 페이지: {}",
+      log.error("배치 분석 처리 중 오류 [스레드: {}]: 교재 ID: {}, 페이지: {}",
           threadName, textbookId, pageNumber, e);
     }
 
@@ -584,8 +556,7 @@ public class ConvertProcessService {
     } else if (textbook.getConvertProcessStatus() == ConvertProcessStatus.FAILED) {
       // 실패한 경우, 처리된 페이지 비율 계산
       long completedPages = pageRepository.findByTextbookId(textbookId).stream()
-          .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED)
-          .count();
+          .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED).count();
 
       int totalPages = textbook.getPageCount() != null ? textbook.getPageCount() : 0;
       if (totalPages > 0) {
@@ -595,8 +566,7 @@ public class ConvertProcessService {
     } else {
       // PROCESSING 상태인 경우
       long completedPages = pageRepository.findByTextbookId(textbookId).stream()
-          .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED)
-          .count();
+          .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED).count();
 
       int totalPages = textbook.getPageCount() != null ? textbook.getPageCount() : 0;
       if (totalPages > 0) {

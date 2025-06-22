@@ -38,8 +38,8 @@ public class Textbook {
   private Document document;
 
   @ManyToOne(fetch = FetchType.LAZY)
-  @JoinColumn(name = "teacher_id", nullable = false)
-  private Teacher teacher;
+  @JoinColumn(name = "guardian_id", nullable = false)
+  private Guardian guardian;
 
   @Column(nullable = false)
   private String title;
@@ -67,10 +67,10 @@ public class Textbook {
   private final List<Page> pages = new ArrayList<>();
 
   @Builder
-  public Textbook(Document document, Teacher teacher, String title, Integer pageCount,
+  public Textbook(Document document, Guardian guardian, String title, Integer pageCount,
       Grade minGrade, Grade maxGrade) {
     this.document = document;
-    this.teacher = teacher;
+    this.guardian = guardian;
     this.title = title;
     this.pageCount = pageCount;
     this.minGrade = minGrade;
