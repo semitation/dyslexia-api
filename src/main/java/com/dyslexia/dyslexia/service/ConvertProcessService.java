@@ -61,7 +61,6 @@ public class ConvertProcessService {
   private final PageRepository pageRepository;
   private final PageTipRepository pageTipRepository;
   private final PageImageRepository pageImageRepository;
-  private final GuardianRepository guardianRepository;
   private final PdfParserService pdfParserService;
   private final AIPromptService aiPromptService;
   private final StorageService storageService;
@@ -77,14 +76,14 @@ public class ConvertProcessService {
 
 
     @Transactional
-    public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade, String subjectPath) throws IOException {
+    public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade) throws IOException {
         Guardian guardian = guardianRepository.findById(guardianId)
             .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
 
     String originalFilename = file.getOriginalFilename();
     String fileExtension = extractExtension(originalFilename);
 
-    log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자ID: {}",
+    log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자 ID: {}",
           originalFilename, guardianId);
 
         Document document = Document.builder()
@@ -96,9 +95,9 @@ public class ConvertProcessService {
             .mimeType(file.getContentType())
             .build();
 
-        document = documentRepository.save(document);
+    document = documentRepository.save(document);
 
-        String uniqueFilename = UUID.randomUUID() + fileExtension;
+    String uniqueFilename = UUID.randomUUID() + fileExtension;
 
         String filePath = storageService.store(file, uniqueFilename, guardianId, document.getId());
         log.info("파일 저장 경로: {}", filePath);

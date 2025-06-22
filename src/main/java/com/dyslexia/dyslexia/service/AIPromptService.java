@@ -581,8 +581,8 @@ public class AIPromptService {
       Long textbookId = DocumentProcessHolder.getTextbookId();
       Integer pageNumber = DocumentProcessHolder.getPageNumber();
 
-      if (teacherId == null || textbookId == null) {
-        log.error("이미지 저장 실패: guardianId({}) 또는 textbookId({})가 없습니다.", guardianId, documentId);
+      if (guardianId == null || textbookId == null) {
+        log.error("이미지 저장 실패: guardianId({}) 또는 textbookId({})가 없습니다.", guardianId, textbookId);
         throw new IllegalStateException("guardianId와 textbookId가 필요합니다.");
       }
       

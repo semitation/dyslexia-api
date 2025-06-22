@@ -62,8 +62,8 @@ public class DocumentProcessHolder {
 
     public static void clear() {
         documentId.remove();
-        pdfName.remove();
         guardianId.remove();
+        pdfName.remove();
         pdfFolderPath.remove();
         pageNumber.remove();
     }
