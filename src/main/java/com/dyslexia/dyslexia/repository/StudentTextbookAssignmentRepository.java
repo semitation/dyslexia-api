@@ -25,7 +25,7 @@ public interface StudentTextbookAssignmentRepository extends JpaRepository<Stude
     
     List<StudentTextbookAssignment> findByAssignedBy(Guardian guardian);
     
-    List<StudentTextbookAssignment> findByAssignedById(Long teacherId);
+    List<StudentTextbookAssignment> findByAssignedById(Long guardianId);
 
-    List<StudentTextbookAssignment> findByAssignedByIdAndStudentId(Long teacherId, Long studentId);
+    List<StudentTextbookAssignment> findByAssignedByIdAndStudentId(Long guardianId, Long studentId);
 } 

@@ -32,31 +32,31 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "TeacherDocument", description = "선생님 교재 관리 API")
+@Tag(name = "GuardianDocument", description = "보호자 교재 관리 API")
 @RestController
-@RequestMapping("teacher/textbooks")
+@RequestMapping("guardian/textbooks")
 @RequiredArgsConstructor
 @Slf4j
-public class TeacherTextbookController {
+public class GuardianTextbookController {
 
   private final GuardianRepository guardianRepository;
   private final TextbookRepository textbookRepository;
   private final StudentRepository studentRepository;
   private final StudentTextbookAssignmentRepository assignmentRepository;
 
-  @Operation(summary = "선생님이 업로드한 교재 목록 조회", description = "선생님이 업로드한 모든 교재 목록을 조회합니다.")
+  @Operation(summary = "보호자가 업로드한 교재 목록 조회", description = "보호자가 업로드한 모든 교재 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
           content = @Content(schema = @Schema(implementation = StudentTextbookListResponseDto.class))),
-      @ApiResponse(responseCode = "404", description = "선생님을 찾을 수 없음"),
+      @ApiResponse(responseCode = "404", description = "보호자를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{teacherId}")
-  public ResponseEntity<StudentTextbookListResponseDto> getTeacherDocuments(
-      @Parameter(description = "선생님 ID", required = true)
-      @PathVariable("teacherId") Long teacherId) {
+  @GetMapping("/{guardianId}")
+  public ResponseEntity<StudentTextbookListResponseDto> getGuardianDocuments(
+      @Parameter(description = "보호자 ID", required = true)
+      @PathVariable("guardianId") Long guardianId) {
 
-    log.info("선생님 ID: {}의 교재 목록 조회 요청", teacherId);
+    log.info("보호자 ID: {}의 교재 목록 조회 요청", guardianId);
 
     try {
       List<Textbook> textbooks = textbookRepository.findAllByOrderByUpdatedAtDesc();
@@ -90,7 +90,7 @@ public class TeacherTextbookController {
       );
 
     } catch (Exception e) {
-      log.error("선생님 교재 목록 조회 중 오류 발생", e);
+      log.error("보호자 교재 목록 조회 중 오류 발생", e);
       return ResponseEntity.status(500).body(
           StudentTextbookListResponseDto.builder()
               .success(false)
@@ -100,11 +100,11 @@ public class TeacherTextbookController {
     }
   }
 
-  @Operation(summary = "학생에게 교재 할당", description = "선생님이 학생에게 교재를 할당합니다.")
+  @Operation(summary = "학생에게 교재 할당", description = "보호자이 학생에게 교재를 할당합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "할당 성공",
           content = @Content(schema = @Schema(implementation = ResponseDto.class))),
-      @ApiResponse(responseCode = "404", description = "선생님, 학생 또는 교재를 찾을 수 없음"),
+      @ApiResponse(responseCode = "404", description = "보호자, 학생 또는 교재를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @PostMapping("/assign")
@@ -115,9 +115,9 @@ public class TeacherTextbookController {
         request.getGuardianId(), request.getStudentId(), request.getTextbookId());
 
     try {
-      // 선생님 존재 여부 확인
+      // 보호자 존재 여부 확인
       Guardian guardian = guardianRepository.findById(request.getGuardianId())
-          .orElseThrow(() -> new IllegalArgumentException("선생님을 찾을 수 없습니다."));
+          .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
 
       // 학생 존재 여부 확인
       Student student = studentRepository.findById(request.getStudentId())
@@ -179,17 +179,17 @@ public class TeacherTextbookController {
     }
   }
 
-  @Operation(summary = "학생 교재 할당 취소", description = "선생님이 학생에게 할당한 교재를 취소합니다.")
+  @Operation(summary = "학생 교재 할당 취소", description = "보호자이 학생에게 할당한 교재를 취소합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "취소 성공",
           content = @Content(schema = @Schema(implementation = ResponseDto.class))),
       @ApiResponse(responseCode = "404", description = "할당 정보를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @DeleteMapping("/assign/{teacherId}/{studentId}/{textbookId}")
+  @DeleteMapping("/assign/{guardianId}/{studentId}/{textbookId}")
   public ResponseEntity<ResponseDto> unassignDocumentFromStudent(
-      @Parameter(description = "선생님 ID", required = true)
-      @PathVariable Long teacherId,
+      @Parameter(description = "보호자 ID", required = true)
+      @PathVariable Long guardianId,
 
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
@@ -197,8 +197,8 @@ public class TeacherTextbookController {
       @Parameter(description = "교재 ID", required = true)
       @PathVariable Long textbookId) {
 
-    log.info("교재 할당 취소 요청: 선생님 ID: {}, 학생 ID: {}, 교재 ID: {}",
-        teacherId, studentId, textbookId);
+    log.info("교재 할당 취소 요청: 보호자 ID: {}, 학생 ID: {}, 교재 ID: {}",
+        guardianId, studentId, textbookId);
 
     try {
       // 할당 정보 조회
@@ -206,12 +206,12 @@ public class TeacherTextbookController {
           .findByStudentIdAndTextbookId(studentId, textbookId)
           .orElseThrow(() -> new IllegalArgumentException("할당된 교재를 찾을 수 없습니다."));
 
-      // 할당한 선생님인지 확인
-      if (!assignment.getGuardian().getId().equals(teacherId)) {
+      // 할당한 보호자인지 확인
+      if (!assignment.getGuardian().getId().equals(guardianId)) {
         return ResponseEntity.status(403).body(
             ResponseDto.builder()
                 .success(false)
-                .message("이 교재를 할당한 선생님만 취소할 수 있습니다.")
+                .message("이 교재를 할당한 보호자만 취소할 수 있습니다.")
                 .build()
         );
       }
@@ -245,26 +245,26 @@ public class TeacherTextbookController {
     }
   }
 
-  @Operation(summary = "선생님의 학생별 할당 교재 목록 조회", description = "선생님이 특정 학생에게 할당한 교재 목록을 조회합니다.")
+  @Operation(summary = "보호자의 학생별 할당 교재 목록 조회", description = "보호자이 특정 학생에게 할당한 교재 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
           content = @Content(schema = @Schema(implementation = StudentTextbookListResponseDto.class))),
-      @ApiResponse(responseCode = "404", description = "선생님 또는 학생을 찾을 수 없음"),
+      @ApiResponse(responseCode = "404", description = "보호자 또는 학생을 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{teacherId}/students/{studentId}")
+  @GetMapping("/{guardianId}/students/{studentId}")
   public ResponseEntity<StudentTextbookListResponseDto> getAssignedDocumentsForStudent(
-      @Parameter(description = "선생님 ID", required = true)
-      @PathVariable Long teacherId,
+      @Parameter(description = "보호자 ID", required = true)
+      @PathVariable Long guardianId,
 
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId) {
 
-    log.info("선생님 ID: {}, 학생 ID: {}의 할당된 교재 목록 조회 요청", teacherId, studentId);
+    log.info("보호자 ID: {}, 학생 ID: {}의 할당된 교재 목록 조회 요청", guardianId, studentId);
 
     try {
       List<StudentTextbookAssignment> assignments = assignmentRepository
-          .findByAssignedByIdAndStudentId(teacherId, studentId);
+          .findByAssignedByIdAndStudentId(guardianId, studentId);
 
       if (assignments.isEmpty()) {
         return ResponseEntity.ok(
