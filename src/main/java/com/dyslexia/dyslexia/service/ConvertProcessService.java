@@ -76,7 +76,7 @@ public class ConvertProcessService {
 
 
   @Transactional
-  public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade)
+  public Document uploadDocument(Long guardianId, MultipartFile file, String title)
       throws IOException {
     Guardian guardian = guardianRepository.findById(guardianId)
         .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
