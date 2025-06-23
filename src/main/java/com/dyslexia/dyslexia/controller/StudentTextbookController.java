@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "StudentTextbook", description = "학생 교재 관리 API")
 @RestController
-@RequestMapping("student/textbooks")
+@RequestMapping("student/{studentId}/textbooks")
 @RequiredArgsConstructor
 @Slf4j
 public class StudentTextbookController {
@@ -50,7 +50,7 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "학생을 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{studentId}")
+  @GetMapping()
   public ResponseEntity<StudentTextbooksResponseDto> getAssignedTextbooks(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId) {
@@ -109,7 +109,7 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "교재를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{studentId}/textbook/{textbookId}/pages")
+  @GetMapping("/{textbookId}/pages")
   public ResponseEntity<PageListResponseDto> getTextbookPages(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
@@ -225,7 +225,7 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "페이지를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @PostMapping("/{studentId}/page/{pageId}/progress")
+  @PostMapping("/{studentId}/page/{pageId}/update")
   public ResponseEntity<?> updatePageProgress(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
