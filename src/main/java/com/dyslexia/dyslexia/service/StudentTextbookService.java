@@ -1,23 +1,23 @@
 package com.dyslexia.dyslexia.service;
 
-import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.PageDetailResponseDto;
+import com.dyslexia.dyslexia.dto.PageDto;
 import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.ResponseDto;
+import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.entity.PageAccessibilitySettings;
 import com.dyslexia.dyslexia.entity.PageImage;
 import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.StudentPageProgress;
 import com.dyslexia.dyslexia.entity.Textbook;
-import com.dyslexia.dyslexia.repository.PageAccessibilitySettingsRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
 import com.dyslexia.dyslexia.repository.StudentPageProgressRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.StudentTextbookAssignmentRepository;
+import com.dyslexia.dyslexia.repository.TextbookRepository;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,54 +36,85 @@ import org.springframework.transaction.annotation.Transactional;
 public class StudentTextbookService {
 
   private final StudentRepository studentRepository;
+  private final TextbookRepository textbookRepository;
   private final PageRepository pageRepository;
   private final PageTipRepository pageTipRepository;
   private final PageImageRepository pageImageRepository;
   private final StudentPageProgressRepository studentPageProgressRepository;
-  private final PageAccessibilitySettingsRepository pageAccessibilitySettingsRepository;
   private final StudentTextbookAssignmentRepository studentTextbookAssignmentRepository;
 
   @Transactional(readOnly = true)
-  public ResponseEntity<PageDetailResponseDto> getPageDetail(Long studentId, Long pageId) {
-    log.info("페이지 상세 정보 조회: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
+  public List<TextbookDto> getAssignedTextbooks(Long studentId) {
+    var assignments = studentTextbookAssignmentRepository.findByStudentId(studentId);
+
+    return assignments.stream()
+        .map(assignment -> {
+          Textbook textbook = assignment.getTextbook();
+
+          return TextbookDto.builder()
+              .id(textbook.getId())
+              .guardianId(textbook.getGuardian().getId())
+              .title(textbook.getTitle())
+              .updatedAt(textbook.getUpdatedAt())
+              .build();
+        })
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public List<PageDto> getTextbookPages(Long studentId, Long textbookId) {
+    // 교재에 대한 학생의 접근 권한 확인
+    boolean hasAccess = studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId,
+            textbookId)
+        .isPresent();
+
+    if (!hasAccess) {
+      throw new AccessDeniedException("이 문서에 대한 접근 권한이 없습니다.");
+    }
+
+    // 교재 존재 여부 확인
+    textbookRepository.findById(textbookId)
+        .orElseThrow(() -> new IllegalArgumentException("해당 교재를 찾을 수 없습니다."));
+
+    return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId)
+        .stream()
+        .map(page -> PageDto.builder()
+            .id(page.getId())
+            .textbookId(textbookId)
+            .pageNumber(page.getPageNumber())
+            .sectionTitle(page.getSectionTitle())
+            .readingLevel(page.getReadingLevel())
+            .wordCount(page.getWordCount())
+            .complexityScore(page.getComplexityScore())
+            .processingStatus(page.getProcessingStatus())
+            .build())
+        .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public PageDetailResponseDto getPageDetail(Long studentId, Long pageId) {
+    log.info("학생({}), 페이지({}) 페이지 상세 정보 조회", studentId, pageId);
 
     Page page = pageRepository.findById(pageId)
         .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
 
     Textbook textbook = page.getTextbook();
 
-    boolean hasAccess = studentTextbookAssignmentRepository
-        .findByStudentIdAndTextbookId(studentId, textbook.getId())
-        .isPresent();
-
-    if (!hasAccess) {
-      return ResponseEntity.status(403).body(
-          PageDetailResponseDto.builder()
-              .success(false)
-              .message("이 페이지에 대한 접근 권한이 없습니다.")
-              .build()
-      );
-    }
+    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, textbook.getId())
+        .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
 
     List<PageTip> tips = pageTipRepository.findByPageId(pageId);
     List<PageImage> images = pageImageRepository.findByPageId(pageId);
     Optional<StudentPageProgress> progress = studentPageProgressRepository
         .findByStudentIdAndPageId(studentId, pageId);
-    Optional<PageAccessibilitySettings> settings = pageAccessibilitySettingsRepository
-        .findByStudentIdAndPageId(studentId, pageId);
 
     // 응답 구성
-    return ResponseEntity.ok(
-        PageDetailResponseDto.builder()
-            .success(true)
-            .message("페이지 상세 정보 조회 성공")
-            .page(page)
-            .tips(tips)
-            .images(images)
-            .progress(progress.orElse(null))
-            .settings(settings.orElse(null))
-            .build()
-    );
+    return PageDetailResponseDto.builder()
+        .page(page)
+        .tips(tips)
+        .images(images)
+        .progress(progress.orElse(null))
+        .build();
   }
 
   @Transactional
@@ -97,18 +129,9 @@ public class StudentTextbookService {
         .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
 
     Textbook textbook = page.getTextbook();
-    boolean hasAccess = studentTextbookAssignmentRepository
+    studentTextbookAssignmentRepository
         .findByStudentIdAndTextbookId(studentId, textbook.getId())
-        .isPresent();
-
-    if (!hasAccess) {
-      return ResponseEntity.status(403).body(
-          ResponseDto.builder()
-              .success(false)
-              .message("이 페이지에 대한 접근 권한이 없습니다.")
-              .build()
-      );
-    }
+        .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
 
     StudentPageProgress progress = studentPageProgressRepository
         .findByStudentIdAndPageId(studentId, pageId)
@@ -143,7 +166,7 @@ public class StudentTextbookService {
     );
   }
 
-  @Transactional
+  /*@Transactional
   public ResponseEntity<ResponseDto> updateAccessibilitySettings(Long studentId, Long pageId,
       AccessibilitySettingsUpdateRequestDto request) {
     log.info("페이지 접근성 설정 업데이트: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
@@ -191,9 +214,9 @@ public class StudentTextbookService {
               .build()
       );
     }
-  }
+  }*/
 
-  private void updateSinglePageSettings(Student student, Page page,
+  /*private void updateSinglePageSettings(Student student, Page page,
       AccessibilitySettingsUpdateRequestDto request) {
     PageAccessibilitySettings settings = pageAccessibilitySettingsRepository
         .findByStudentIdAndPageId(student.getId(), page.getId())
@@ -229,5 +252,5 @@ public class StudentTextbookService {
 
       studentRepository.save(student);
     }
-  }
+  }*/
 } 

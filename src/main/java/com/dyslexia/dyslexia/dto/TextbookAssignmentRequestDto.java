@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "문서 할당 요청 DTO")
+@Schema(description = "교재 할당 요청 DTO")
 public class TextbookAssignmentRequestDto {
 
     @Schema(description = "보호자 ID", example = "1", required = true)
