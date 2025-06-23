@@ -49,10 +49,7 @@ public class DocumentController {
             @RequestParam("title") String title,
             
             @Parameter(description = "학년", required = true) 
-            @RequestParam("grade") Grade grade,
-            
-            @Parameter(description = "과목 경로", required = false) 
-            @RequestParam(value = "subjectPath", required = false) String subjectPath
+            @RequestParam("grade") Grade grade
     ) {
         try {
             log.info("문서 업로드 요청: 보호자 ID: {}, 제목: {}, 학년: {}", guardianId, title, grade);

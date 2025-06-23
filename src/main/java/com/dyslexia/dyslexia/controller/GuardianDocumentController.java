@@ -1,14 +1,9 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.DocumentDto;
-import com.dyslexia.dyslexia.dto.StudentDocumentListResponseDto;
+import com.dyslexia.dyslexia.dto.UploadedDocumentsResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
-import com.dyslexia.dyslexia.entity.Student;
-import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
-import com.dyslexia.dyslexia.repository.StudentRepository;
-import com.dyslexia.dyslexia.repository.GuardianRepository;
-import com.dyslexia.dyslexia.repository.StudentTextbookAssignmentRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -38,12 +33,12 @@ public class GuardianDocumentController {
   @Operation(summary = "보호자가 업로드한 문서 목록 조회", description = "보호자가 업로드한 모든 문서 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = StudentDocumentListResponseDto.class))),
+          content = @Content(schema = @Schema(implementation = UploadedDocumentsResponseDto.class))),
       @ApiResponse(responseCode = "404", description = "보호자를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @GetMapping("/{guardianId}")
-  public ResponseEntity<StudentDocumentListResponseDto> getGuardianDocuments(
+  public ResponseEntity<UploadedDocumentsResponseDto> getGuardianDocuments(
       @Parameter(description = "보호자 ID", required = true)
       @PathVariable("guardianId") Long guardianId) {
 
@@ -54,7 +49,7 @@ public class GuardianDocumentController {
 
       if (documents.isEmpty()) {
         return ResponseEntity.ok(
-            StudentDocumentListResponseDto.builder()
+            UploadedDocumentsResponseDto.builder()
                 .success(true)
                 .message("업로드한 문서가 없습니다.")
                 .documents(List.of())
@@ -74,7 +69,7 @@ public class GuardianDocumentController {
           .collect(Collectors.toList());
 
       return ResponseEntity.ok(
-          StudentDocumentListResponseDto.builder()
+          UploadedDocumentsResponseDto.builder()
               .success(true)
               .message("문서 목록 조회 성공")
               .documents(documentDtos)
@@ -84,7 +79,7 @@ public class GuardianDocumentController {
     } catch (Exception e) {
       log.error("보호자 문서 목록 조회 중 오류 발생", e);
       return ResponseEntity.status(500).body(
-          StudentDocumentListResponseDto.builder()
+          UploadedDocumentsResponseDto.builder()
               .success(false)
               .message("문서 목록 조회 중 오류가 발생했습니다: " + e.getMessage())
               .build()

@@ -86,10 +86,14 @@ public class ConvertProcessService {
 
     log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자 ID: {}", originalFilename, guardianId);
 
-    Document document = Document.builder().guardian(guardian).title(title)
+    Document document = Document.builder()
+        .guardian(guardian)
+        .title(title)
         .originalFilename(originalFilename)
         .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
-        .fileSize(file.getSize()).mimeType(file.getContentType()).build();
+        .fileSize(file.getSize())
+        .mimeType(file.getContentType())
+        .build();
 
     document = documentRepository.save(document);
 
@@ -104,7 +108,7 @@ public class ConvertProcessService {
 
     List<String> rawPages = pdfParserService.parsePages(document.getFilePath());
 
-    long textbookId = CreateTextbook(document.getId(), rawPages.size(), grade, grade);
+    long textbookId = CreateTextbook(document.getId(), rawPages.size());
 
     if (textbookId == -1) {
       throw new IllegalArgumentException("교재를 찾을 수 없습니다.");
@@ -120,19 +124,25 @@ public class ConvertProcessService {
     return document;
   }
 
-  private long CreateTextbook(long documentId, int pageCount, Grade maxGrade, Grade minGrade) {
+  private long CreateTextbook(long documentId, int pageCount) {
     try {
       Document document = documentRepository.findById(documentId)
           .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
 
-      Textbook textbook = Textbook.builder().document(document).guardian(document.getGuardian())
-          .title(document.getTitle()).pageCount(pageCount).maxGrade(maxGrade).minGrade(minGrade)
+      Textbook textbook = Textbook.builder()
+          .document(document)
+          .guardian(document.getGuardian())
+          .title(document.getTitle())
+          .pageCount(pageCount)
+          .learnRate(0)
           .build();
 
       textbook.setConvertProcessStatus(ConvertProcessStatus.PROCESSING);
 
-      textbookRepository.save(textbook);
+      textbook = textbookRepository.save(textbook);
 
+      log.info("교재({}) 생성 완료", textbook.getId());
+      
       return textbook.getId();
 
     } catch (Exception e) {
@@ -301,12 +311,11 @@ public class ConvertProcessService {
         }
 
         // 1. OpenAI 번역 수행
-        String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent,
-            textbook.getMaxGrade());
+        String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent, Grade.GRADE_3);
 
         // 2. 번역된 텍스트로 AI Block 처리
         PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(
-            translatedContent, textbook.getMaxGrade());
+            translatedContent, Grade.GRADE_3);
 
         // 3-1. blocks를 JSON 문자열로 변환
         String processedContentStr;
@@ -406,8 +415,7 @@ public class ConvertProcessService {
 
         // 7. 페이지 팁 추출
         log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber);
-        List<TermInfo> terms = aiPromptService.extractTerms(translatedContent,
-            textbook.getMaxGrade());
+        List<TermInfo> terms = aiPromptService.extractTerms(translatedContent, Grade.GRADE_3);
         for (TermInfo termInfo : terms) {
           PageTip pageTip = PageTip.builder()
               .page(page)
