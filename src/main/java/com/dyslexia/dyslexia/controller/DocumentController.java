@@ -46,16 +46,10 @@ public class DocumentController {
             @RequestParam("file") MultipartFile file,
             
             @Parameter(description = "문서 제목", required = true) 
-            @RequestParam("title") String title,
-            
-            @Parameter(description = "학년", required = true) 
-            @RequestParam("grade") Grade grade,
-            
-            @Parameter(description = "과목 경로", required = false) 
-            @RequestParam(value = "subjectPath", required = false) String subjectPath
+            @RequestParam("title") String title
     ) {
         try {
-            log.info("문서 업로드 요청: 보호자 ID: {}, 제목: {}, 학년: {}", guardianId, title, grade);
+            log.info("문서 업로드 요청: 보호자 ID: {}, 제목: {}", guardianId, title);
             
             String originalFilename = file.getOriginalFilename();
             if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
@@ -67,7 +61,7 @@ public class DocumentController {
                 );
             }
             
-            Document document = convertProcessService.uploadDocument(guardianId, file, title, grade);
+            Document document = convertProcessService.uploadDocument(guardianId, file, title);
             
             DocumentResponseDto responseDto = DocumentResponseDto.builder()
                 .success(true)
