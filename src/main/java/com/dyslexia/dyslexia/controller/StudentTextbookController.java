@@ -4,7 +4,7 @@ import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.PageDto;
 import com.dyslexia.dyslexia.dto.PageListResponseDto;
 import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
-import com.dyslexia.dyslexia.dto.StudentTextbookListResponseDto;
+import com.dyslexia.dyslexia.dto.StudentTextbooksResponseDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.StudentTextbookAssignment;
@@ -46,12 +46,12 @@ public class StudentTextbookController {
   @Operation(summary = "학생에게 할당된 교재 목록 조회", description = "학생에게 할당된 모든 교재 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = StudentTextbookListResponseDto.class))),
+          content = @Content(schema = @Schema(implementation = StudentTextbooksResponseDto.class))),
       @ApiResponse(responseCode = "404", description = "학생을 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @GetMapping("/{studentId}")
-  public ResponseEntity<StudentTextbookListResponseDto> getAssignedTextbooks(
+  public ResponseEntity<StudentTextbooksResponseDto> getAssignedTextbooks(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId) {
 
@@ -62,7 +62,7 @@ public class StudentTextbookController {
 
       if (assignments.isEmpty()) {
         return ResponseEntity.ok(
-            StudentTextbookListResponseDto.builder()
+            StudentTextbooksResponseDto.builder()
                 .success(true)
                 .message("할당된 교재가 없습니다.")
                 .textbooks(List.of())
@@ -84,7 +84,7 @@ public class StudentTextbookController {
           .toList();
 
       return ResponseEntity.ok(
-          StudentTextbookListResponseDto.builder()
+          StudentTextbooksResponseDto.builder()
               .success(true)
               .message("할당된 교재 목록 조회 성공")
               .textbooks(textbooks)
@@ -94,7 +94,7 @@ public class StudentTextbookController {
     } catch (Exception e) {
       log.error("학생 교재 목록 조회 중 오류 발생", e);
       return ResponseEntity.status(500).body(
-          StudentTextbookListResponseDto.builder()
+          StudentTextbooksResponseDto.builder()
               .success(false)
               .message("교재 목록 조회 중 오류가 발생했습니다: " + e.getMessage())
               .build()

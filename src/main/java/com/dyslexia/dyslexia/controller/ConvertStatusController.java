@@ -32,7 +32,7 @@ public class ConvertStatusController {
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @GetMapping("/{textbookId}")
-    public ResponseEntity<ConvertProcessStatusDto> getDocumentStatus(
+    public ResponseEntity<ConvertProcessStatusDto> getConvertStatus(
             @Parameter(description = "교재 ID", required = true) 
             @PathVariable("textbookId") Long textbookId) {
         
@@ -78,7 +78,7 @@ public class ConvertStatusController {
         @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     @PostMapping("/{textbookId}/retry")
-    public ResponseEntity<ConvertProcessStatusDto> retryDocumentProcessing(
+    public ResponseEntity<ConvertProcessStatusDto> retryConvertProcess(
             @Parameter(description = "교재 ID", required = true) 
             @PathVariable("textbookId") Long textbookId) {
         
