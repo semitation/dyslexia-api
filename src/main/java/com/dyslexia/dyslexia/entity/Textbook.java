@@ -83,6 +83,10 @@ public class Textbook {
     this.convertProcessStatus = processStatus;
   }
 
+  public void setLearnRate(Integer learnRate) {
+    this.learnRate = learnRate;
+  }
+
   public void addPage(Page page) {
     this.pages.add(page);
     if (page.getTextbook() != this) {
