@@ -1,0 +1,12 @@
+version: 0.0
+os: linux
+
+files:
+  - source: scripts/start_container.sh
+    destination: /home/ubuntu/app/scripts/
+
+hooks:
+  ApplicationStart:
+    - location: scripts/start_container.sh
+      timeout: 300
+      runas: root

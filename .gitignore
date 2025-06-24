@@ -45,3 +45,4 @@ generated
 .cursor
 uploads
 ./logs
+./logs/app.log

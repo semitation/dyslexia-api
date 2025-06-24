@@ -1,6 +1,5 @@
 package com.dyslexia.dyslexia.controller;
 
-import com.dyslexia.dyslexia.dto.TextbookAssignmentRequestDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Student;
@@ -97,30 +96,31 @@ public class GuardianTextbookController {
     Guardian guardian = guardianRepository.findById(request.getGuardianId())
         .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
 
-    // 학생 존재 여부 확인
-    Student student = studentRepository.findById(request.getStudentId())
-        .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+      // 학생 존재 여부 확인
+      Student student = studentRepository.findById(request.getStudentId())
+          .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
 
-    // 교재 존재 여부 확인
-    Textbook textbook = textbookRepository.findById(request.getTextbookId())
-        .orElseThrow(() -> new IllegalArgumentException("교재를 찾을 수 없습니다."));
+      // 교재 존재 여부 확인
+      Textbook textbook = textbookRepository.findById(request.getTextbookId())
+          .orElseThrow(() -> new IllegalArgumentException("교재를 찾을 수 없습니다."));
 
     assignmentRepository.findByStudentIdAndTextbookId(
         request.getStudentId(), request.getTextbookId()).ifPresent(a -> {
       throw new IllegalStateException("이미 학생에게 할당된 교재입니다.");
     });
 
-    // 할당 정보 생성
-    StudentTextbookAssignment assignment = StudentTextbookAssignment.builder()
-        .student(student)
-        .textbook(textbook)
-        .assignedBy(guardian)
-        .assignedAt(LocalDateTime.now())
-        .notes(request.getNotes())
-        .build();
+      // 할당 정보 생성
+      StudentTextbookAssignment assignment = StudentTextbookAssignment.builder()
+          .student(student)
+          .textbook(textbook)
+          .assignedBy(guardian)
+          .assignedAt(LocalDateTime.now())
+          .dueDate(request.getDueDate())
+          .notes(request.getNotes())
+          .build();
 
-    // 저장
-    assignmentRepository.save(assignment);
+      // 저장
+      assignmentRepository.save(assignment);
 
     return ResponseEntity.ok(GlobalApiResponse.ok("교재가 학생에게 할당되었습니다."));
   }
@@ -147,8 +147,8 @@ public class GuardianTextbookController {
       throw new AccessDeniedException("이 교재를 할당한 보호자만 취소할 수 있습니다.");
     }
 
-    // 삭제
-    assignmentRepository.delete(assignment);
+      // 삭제
+      assignmentRepository.delete(assignment);
 
     return ResponseEntity.ok(GlobalApiResponse.ok("교재 할당이 취소되었습니다."));
   }

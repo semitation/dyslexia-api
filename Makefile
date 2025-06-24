@@ -1,5 +1,8 @@
 .PHONY: all build down re
 
+COMPOSE_FILES = -f docker-compose.yml -f docker-compose.local.yml
+PROJECT_NAME = -p test
+
 all: build copy up
 
 build:
@@ -9,9 +12,9 @@ copy:
 	@cp ./build/libs/dyslexia-0.0.1-SNAPSHOT.jar ./app.jar
 
 up:
-	@docker compose -f docker-compose.yml -p test up --build -d
+	@docker compose $(COMPOSE_FILES) $(PROJECT_NAME) up --build -d
 
 down:
-	@docker compose -f docker-compose.yml -p test down
+	@docker compose $(COMPOSE_FILES) $(PROJECT_NAME) down
 
 re: down up
