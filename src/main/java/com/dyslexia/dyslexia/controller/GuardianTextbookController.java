@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.TextbookAssignmentRequestDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Student;
@@ -115,7 +116,6 @@ public class GuardianTextbookController {
           .textbook(textbook)
           .assignedBy(guardian)
           .assignedAt(LocalDateTime.now())
-          .dueDate(request.getDueDate())
           .notes(request.getNotes())
           .build();
 
