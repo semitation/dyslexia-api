@@ -1,7 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.ResponseDto;
-import com.dyslexia.dyslexia.dto.StudentTextbooksResponseDto;
 import com.dyslexia.dyslexia.dto.TextbookAssignmentRequestDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Guardian;
@@ -52,7 +51,7 @@ public class GuardianTextbookController {
   @Operation(summary = "보호자가 업로드한 교재 목록 조회", description = "보호자가 업로드한 모든 교재 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = StudentTextbooksResponseDto.class))),
+          content = @Content(schema = @Schema(implementation = TextbookDto.class))),
       @ApiResponse(responseCode = "404", description = "보호자를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
