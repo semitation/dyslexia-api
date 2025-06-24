@@ -6,11 +6,8 @@ files:
     destination: /home/ubuntu/app/scripts/
 
 hooks:
-  - ApplicationStart:
-      location: start_container.sh
-
+  ApplicationStart:
+    - location: start_container.sh
       workingDirectory: /home/ubuntu/app/scripts/
-
       timeout: 300
-
       runas: root
