@@ -22,6 +22,10 @@ public class GlobalApiResponse<T> {
     return new GlobalApiResponse<>(true, "성공", data);
   }
 
+  public static <T> GlobalApiResponse<T> ok(String message) {
+    return new GlobalApiResponse<>(true, message, null);
+  }
+
   public static <T> GlobalApiResponse<T> ok(String message, T data) {
     return new GlobalApiResponse<>(true, message, data);
   }

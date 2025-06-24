@@ -1,7 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.DocumentDto;
-import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.exception.GlobalApiResponse;
 import com.dyslexia.dyslexia.service.ConvertProcessService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,14 +39,9 @@ public class DocumentController {
   })
   @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<GlobalApiResponse<DocumentDto>> uploadDocument(
-      @Parameter(description = "보호자 ID", required = true)
-      @RequestParam("guardianId") Long guardianId,
-
-      @Parameter(description = "PDF 파일", required = true)
-      @RequestParam("file") MultipartFile file,
-
-      @Parameter(description = "문서 제목", required = true)
-      @RequestParam("title") String title
+      @Parameter(description = "보호자 ID", required = true) @RequestParam("guardianId") Long guardianId,
+      @Parameter(description = "PDF 파일", required = true) @RequestParam("file") MultipartFile file,
+      @Parameter(description = "문서 제목", required = true) @RequestParam("title") String title
   ) throws IOException {
     log.info("문서 업로드 요청: 보호자({}), 문서 제목: {}", guardianId, title);
 
@@ -58,20 +52,8 @@ public class DocumentController {
       );
     }
 
-    Document document = convertProcessService.uploadDocument(guardianId, file, title);
+    DocumentDto dto = convertProcessService.uploadDocument(guardianId, file, title);
 
-    DocumentDto dto = mapToDto(document);
     return ResponseEntity.ok(GlobalApiResponse.ok("PDF 업로드 완료. 비동기 처리가 시작되었습니다.", dto));
-  }
-
-  private DocumentDto mapToDto(Document document) {
-    return DocumentDto.builder()
-        .id(document.getId())
-        .guardianId(document.getGuardian().getId())
-        .title(document.getTitle())
-        .originalFilename(document.getOriginalFilename())
-        .fileSize(document.getFileSize())
-        .uploadedAt(document.getUploadedAt())
-        .build();
   }
 }
