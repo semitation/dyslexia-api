@@ -62,7 +62,7 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "교재를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{textbookId}/pages")
+  @GetMapping("{textbookId}/pages")
   public ResponseEntity<GlobalApiResponse<List<PageDto>>> findAllPageByStudentAndTextbook(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
@@ -85,8 +85,8 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "페이지를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/page/{pageId}")
-  public ResponseEntity<GlobalApiResponse<?>> getPageDetail(
+  @GetMapping("/pages/{pageId}")
+  public ResponseEntity<GlobalApiResponse<PageDetailResponseDto>> getPageDetail(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
 
@@ -106,8 +106,8 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "페이지를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @PostMapping("/{studentId}/page/{pageId}/progress")
-  public ResponseEntity<?> updatePageProgress(
+  @PostMapping("/page/{pageId}/progress")
+  public ResponseEntity<GlobalApiResponse<Void>> updatePageProgress(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
 
@@ -118,17 +118,9 @@ public class StudentTextbookController {
 
     log.info("학생({}), 페이지({})의 진행 상태 업데이트 요청", studentId, pageId);
 
-    try {
-      return studentTextbookService.updatePageProgress(studentId, pageId, request);
-    } catch (Exception e) {
-      log.error("페이지 진행 상태 업데이트 중 오류 발생", e);
-      return ResponseEntity.status(500).body(
-          PageListResponseDto.builder()
-              .success(false)
-              .message("페이지 진행 상태 업데이트 중 오류가 발생했습니다: " + e.getMessage())
-              .build()
-      );
-    }
+    studentTextbookService.updatePageProgress(studentId, pageId, request);
+
+    return ResponseEntity.ok(GlobalApiResponse.ok("페이지 진행 상태가 업데이트되었습니다.", null));
   }
 
   /*@Operation(summary = "페이지 접근성 설정 업데이트", description = "학생의 페이지 접근성 설정을 업데이트합니다.")

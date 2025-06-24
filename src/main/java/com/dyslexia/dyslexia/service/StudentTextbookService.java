@@ -3,7 +3,6 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.PageDetailResponseDto;
 import com.dyslexia.dyslexia.dto.PageDto;
 import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
-import com.dyslexia.dyslexia.dto.ResponseDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.PageImage;
@@ -25,7 +24,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -118,7 +116,7 @@ public class StudentTextbookService {
   }
 
   @Transactional
-  public ResponseEntity<ResponseDto> updatePageProgress(Long studentId, Long pageId,
+  public void updatePageProgress(Long studentId, Long pageId,
       PageProgressUpdateRequestDto request) {
     log.info("페이지 진행 상태 업데이트: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
 
@@ -157,13 +155,6 @@ public class StudentTextbookService {
     }
 
     studentPageProgressRepository.save(progress);
-
-    return ResponseEntity.ok(
-        ResponseDto.builder()
-            .success(true)
-            .message("페이지 진행 상태가 업데이트되었습니다.")
-            .build()
-    );
   }
 
   /*@Transactional
