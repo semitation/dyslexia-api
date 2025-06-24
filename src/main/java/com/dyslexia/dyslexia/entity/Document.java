@@ -39,7 +39,7 @@ public class Document {
   private String originalFilename;
 
   @Setter
-  @Column(name = "file_path", nullable = true, length = 500)
+  @Column(name = "file_path", length = 500)
   private String filePath;
 
   @Column(name = "file_size")
@@ -47,9 +47,6 @@ public class Document {
 
   @Column(name = "mime_type", length = 100)
   private String mimeType;
-
-  private String state;
-  private String type;
 
   @Column(nullable = false)
   private LocalDateTime uploadedAt;
@@ -60,15 +57,13 @@ public class Document {
 
   @Builder
   public Document(Guardian guardian, String title, String originalFilename, String filePath,
-      Long fileSize, String mimeType, String state, String type, String metadata) {
+      Long fileSize, String mimeType, String metadata) {
     this.guardian = guardian;
     this.title = title;
     this.originalFilename = originalFilename;
     this.filePath = filePath;
     this.fileSize = fileSize;
     this.mimeType = mimeType;
-    this.state = state;
-    this.type = type;
     this.metadata = metadata;
     this.uploadedAt = LocalDateTime.now();
   }

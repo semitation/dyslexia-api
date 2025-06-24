@@ -2,7 +2,6 @@ package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.PageDetailResponseDto;
 import com.dyslexia.dyslexia.dto.PageDto;
-import com.dyslexia.dyslexia.dto.PageListResponseDto;
 import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.exception.GlobalApiResponse;
@@ -58,7 +57,7 @@ public class StudentTextbookController {
   @Operation(summary = "교재 페이지 목록 조회", description = "특정 교재의 모든 페이지 정보를 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = PageListResponseDto.class))),
+          content = @Content(schema = @Schema(implementation = PageDto.class))),
       @ApiResponse(responseCode = "404", description = "교재를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })

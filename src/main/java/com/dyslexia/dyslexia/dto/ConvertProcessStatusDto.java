@@ -14,12 +14,6 @@ import lombok.NoArgsConstructor;
 @Schema(description = "교재 처리 상태 응답 DTO")
 public class ConvertProcessStatusDto {
 
-    @Schema(description = "처리 성공 여부", example = "true")
-    private boolean success;
-
-    @Schema(description = "응답 메시지", example = "문서 처리 상태 조회 성공")
-    private String message;
-
     @Schema(description = "교재 ID", example = "1")
     private Long textbookId;
 
