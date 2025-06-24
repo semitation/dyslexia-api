@@ -37,7 +37,7 @@ public class StudentTextbookController {
   @Operation(summary = "학생에게 할당된 교재 목록 조회", description = "학생에게 할당된 모든 교재 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = List.class))),
+          content = @Content(schema = @Schema(implementation = StudentTextbookListResponseDto.class))),
       @ApiResponse(responseCode = "404", description = "학생을 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
