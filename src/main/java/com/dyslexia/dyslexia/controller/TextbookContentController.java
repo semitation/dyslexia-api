@@ -2,8 +2,7 @@ package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.PageContentResponseDto;
 import com.dyslexia.dyslexia.dto.PageTipResponseDto;
-import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.entity.PageTip;
+import com.dyslexia.dyslexia.exception.GlobalApiResponse;
 import com.dyslexia.dyslexia.service.TextbookContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -14,7 +13,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
-import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,15 +57,16 @@ public class TextbookContentController {
       }
   )
 
-  public ResponseEntity<List<PageContentResponseDto>> findPageByTextbook(
+  public ResponseEntity<GlobalApiResponse<List<PageContentResponseDto>>> findPageByTextbook(
       @Parameter(description = "문서 ID", required = true) @RequestParam(name = "textbookId") Long textbookId,
       @Parameter(description = "페이지 번호 (선택사항)") @RequestParam(name = "page", required = false) Integer pageNumber) {
 
-    List<Page> pages = textbookContentService.getPagesByTextbookId(textbookId, pageNumber);
-    List<PageContentResponseDto> responses = pages.stream()
+    List<PageContentResponseDto> responses = textbookContentService
+        .getPagesByTextbookId(textbookId, pageNumber).stream()
         .map(page -> PageContentResponseDto.fromEntity(page, objectMapper))
-        .collect(Collectors.toList());
-    return ResponseEntity.ok(responses);
+        .toList();
+
+    return ResponseEntity.ok(GlobalApiResponse.ok(responses));
   }
 
   @GetMapping("/pages/{pageId}/tips")
@@ -87,12 +86,13 @@ public class TextbookContentController {
           )
       }
   )
-  public ResponseEntity<List<PageTipResponseDto>> findPageTipsByPage(
+  public ResponseEntity<GlobalApiResponse<List<PageTipResponseDto>>> findPageTipsByPage(
       @Parameter(description = "페이지 ID", required = true) @PathVariable("pageId") Long pageId) {
-    List<PageTip> pageTips = textbookContentService.getPageTipsByPageId(pageId);
-    List<PageTipResponseDto> responses = pageTips.stream()
+
+    List<PageTipResponseDto> responses = textbookContentService.getPageTipsByPageId(pageId).stream()
         .map(PageTipResponseDto::fromEntity)
-        .collect(Collectors.toList());
-    return ResponseEntity.ok(responses);
+        .toList();
+
+    return ResponseEntity.ok(GlobalApiResponse.ok(responses));
   }
 }

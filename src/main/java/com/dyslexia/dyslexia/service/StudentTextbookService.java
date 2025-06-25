@@ -9,7 +9,9 @@ import com.dyslexia.dyslexia.entity.PageImage;
 import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.StudentPageProgress;
-import com.dyslexia.dyslexia.entity.Textbook;
+import com.dyslexia.dyslexia.entity.StudentTextbookAssignment;
+import com.dyslexia.dyslexia.mapper.PageMapper;
+import com.dyslexia.dyslexia.mapper.TextbookMapper;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
@@ -41,51 +43,29 @@ public class StudentTextbookService {
   private final StudentPageProgressRepository studentPageProgressRepository;
   private final StudentTextbookAssignmentRepository studentTextbookAssignmentRepository;
 
+  private TextbookMapper textbookMapper;
+  private PageMapper pageMapper;
+
   @Transactional(readOnly = true)
   public List<TextbookDto> getAssignedTextbooks(Long studentId) {
-    var assignments = studentTextbookAssignmentRepository.findByStudentId(studentId);
-
-    return assignments.stream()
-        .map(assignment -> {
-          Textbook textbook = assignment.getTextbook();
-
-          return TextbookDto.builder()
-              .id(textbook.getId())
-              .guardianId(textbook.getGuardian().getId())
-              .title(textbook.getTitle())
-              .updatedAt(textbook.getUpdatedAt())
-              .build();
-        })
+    return studentTextbookAssignmentRepository.findByStudentId(studentId).stream()
+        .map(StudentTextbookAssignment::getTextbook)
+        .map(textbookMapper::toDto)
         .toList();
   }
 
   @Transactional(readOnly = true)
   public List<PageDto> getTextbookPages(Long studentId, Long textbookId) {
     // 교재에 대한 학생의 접근 권한 확인
-    boolean hasAccess = studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId,
-            textbookId)
-        .isPresent();
-
-    if (!hasAccess) {
-      throw new AccessDeniedException("이 문서에 대한 접근 권한이 없습니다.");
-    }
+    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, textbookId)
+        .orElseThrow(() -> new AccessDeniedException("이 문서에 대한 접근 권한이 없습니다."));
 
     // 교재 존재 여부 확인
     textbookRepository.findById(textbookId)
         .orElseThrow(() -> new IllegalArgumentException("해당 교재를 찾을 수 없습니다."));
 
-    return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId)
-        .stream()
-        .map(page -> PageDto.builder()
-            .id(page.getId())
-            .textbookId(textbookId)
-            .pageNumber(page.getPageNumber())
-            .sectionTitle(page.getSectionTitle())
-            .readingLevel(page.getReadingLevel())
-            .wordCount(page.getWordCount())
-            .complexityScore(page.getComplexityScore())
-            .processingStatus(page.getProcessingStatus())
-            .build())
+    return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId).stream()
+        .map(pageMapper::toDto)
         .toList();
   }
 
@@ -96,9 +76,7 @@ public class StudentTextbookService {
     Page page = pageRepository.findById(pageId)
         .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
 
-    Textbook textbook = page.getTextbook();
-
-    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, textbook.getId())
+    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, page.getTextbook().getId())
         .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
 
     List<PageTip> tips = pageTipRepository.findByPageId(pageId);
@@ -126,9 +104,7 @@ public class StudentTextbookService {
     Student student = studentRepository.findById(studentId)
         .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
 
-    Textbook textbook = page.getTextbook();
-    studentTextbookAssignmentRepository
-        .findByStudentIdAndTextbookId(studentId, textbook.getId())
+    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, page.getTextbook().getId())
         .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
 
     StudentPageProgress progress = studentPageProgressRepository

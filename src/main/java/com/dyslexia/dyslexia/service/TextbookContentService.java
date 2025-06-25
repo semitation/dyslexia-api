@@ -9,7 +9,6 @@ import com.dyslexia.dyslexia.repository.PageTipRepository;
 import com.dyslexia.dyslexia.repository.TextbookRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,14 +23,15 @@ public class TextbookContentService {
   private final PageImageRepository pageImageRepository;
 
   public List<Page> getPagesByTextbookId(Long textbookId, Integer pageNumber) {
-    if (pageNumber != null) {
-      return textbookRepository.findById(textbookId)
-          .map(textbook -> pageRepository.findByTextbookAndPageNumber(textbook, pageNumber)
-              .map(List::of)
-              .orElse(List.of()))
-          .orElse(List.of());
+    if (pageNumber == null) {
+      return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId);
     }
-    return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId);
+
+    return textbookRepository.findById(textbookId)
+        .map(textbook -> pageRepository.findByTextbookAndPageNumber(textbook, pageNumber)
+            .map(List::of)
+            .orElse(List.of()))
+        .orElse(List.of());
   }
 
   public List<PageTip> getPageTipsByPageId(Long pageId) {
