@@ -29,68 +29,70 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Textbook Content API", description = "교재 컨텐츠 관련 API")
 public class TextbookContentController {
 
-    private final TextbookContentService textbookContentService;
-    private final ObjectMapper objectMapper;
+  private final TextbookContentService textbookContentService;
+  private final ObjectMapper objectMapper;
 
-    @GetMapping("/pages")
-    @Operation(
-        summary = "교재 페이지 조회",
-        description = """
-        교재 ID 기반으로 생성된 콘텐츠 JSON(page)를 조회합니다. 페이지 번호를 지정하면 특정 페이지만 조회합니다.
-        
-        Block 구조 예시:
-        [
-          {"id":"1","type":"HEADING1","text":"챕터 제목"},
-          {"id":"2","type":"TEXT","text":"본문"},
-          {"id":"3","type":"LIST","items":["항목1","항목2"]}
-        ]
-        """,
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "페이지 목록 조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    array = @ArraySchema(
-                        schema = @Schema(implementation = PageContentResponseDto.class)
-                    )
-                )
-            )
-        }
-    )
-    public ResponseEntity<List<PageContentResponseDto>> getDocumentPages(
-            @Parameter(description = "문서 ID", required = true) @RequestParam(name = "textbookId") Long textbookId,
-            @Parameter(description = "페이지 번호 (선택사항)") @RequestParam(name = "page", required = false) Integer pageNumber) {
-        List<Page> pages = textbookContentService.getPagesByTextbookId(textbookId, pageNumber);
-        List<PageContentResponseDto> responses = pages.stream()
-                .map(page -> PageContentResponseDto.fromEntity(page, objectMapper))
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
-    }
+  @GetMapping("/pages")
+  @Operation(
+      summary = "교재 페이지 조회",
+      description = """
+          교재 ID 기반으로 생성된 콘텐츠 JSON(page)를 조회합니다. 페이지 번호를 지정하면 특정 페이지만 조회합니다.
+          
+          Block 구조 예시:
+          [
+            {"id":"1","type":"HEADING1","text":"챕터 제목"},
+            {"id":"2","type":"TEXT","text":"본문"},
+            {"id":"3","type":"LIST","items":["항목1","항목2"]}
+          ]
+          """,
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "페이지 목록 조회 성공",
+              content = @Content(
+                  mediaType = "application/json",
+                  array = @ArraySchema(
+                      schema = @Schema(implementation = PageContentResponseDto.class)
+                  )
+              )
+          )
+      }
+  )
 
-    @GetMapping("/pages/{pageId}/tips")
-    @Operation(
-        summary = "페이지 팁 조회", 
-        description = "페이지 ID 기반으로 해당 페이지의 팁을 조회합니다.",
-        responses = {
-            @ApiResponse(
-                responseCode = "200",
-                description = "페이지 팁 목록 조회 성공",
-                content = @Content(
-                    mediaType = "application/json",
-                    array = @ArraySchema(
-                        schema = @Schema(implementation = PageTipResponseDto.class)
-                    )
-                )
-            )
-        }
-    )
-    public ResponseEntity<List<PageTipResponseDto>> getPageTips(
-            @Parameter(description = "페이지 ID", required = true) @PathVariable("pageId") Long pageId) {
-        List<PageTip> pageTips = textbookContentService.getPageTipsByPageId(pageId);
-        List<PageTipResponseDto> responses = pageTips.stream()
-                .map(PageTipResponseDto::fromEntity)
-                .collect(Collectors.toList());
-        return ResponseEntity.ok(responses);
-    }
+  public ResponseEntity<List<PageContentResponseDto>> findPageByTextbook(
+      @Parameter(description = "문서 ID", required = true) @RequestParam(name = "textbookId") Long textbookId,
+      @Parameter(description = "페이지 번호 (선택사항)") @RequestParam(name = "page", required = false) Integer pageNumber) {
+
+    List<Page> pages = textbookContentService.getPagesByTextbookId(textbookId, pageNumber);
+    List<PageContentResponseDto> responses = pages.stream()
+        .map(page -> PageContentResponseDto.fromEntity(page, objectMapper))
+        .collect(Collectors.toList());
+    return ResponseEntity.ok(responses);
+  }
+
+  @GetMapping("/pages/{pageId}/tips")
+  @Operation(
+      summary = "페이지 팁 조회",
+      description = "페이지 ID 기반으로 해당 페이지의 팁을 조회합니다.",
+      responses = {
+          @ApiResponse(
+              responseCode = "200",
+              description = "페이지 팁 목록 조회 성공",
+              content = @Content(
+                  mediaType = "application/json",
+                  array = @ArraySchema(
+                      schema = @Schema(implementation = PageTipResponseDto.class)
+                  )
+              )
+          )
+      }
+  )
+  public ResponseEntity<List<PageTipResponseDto>> findPageTipsByPage(
+      @Parameter(description = "페이지 ID", required = true) @PathVariable("pageId") Long pageId) {
+    List<PageTip> pageTips = textbookContentService.getPageTipsByPageId(pageId);
+    List<PageTipResponseDto> responses = pageTips.stream()
+        .map(PageTipResponseDto::fromEntity)
+        .collect(Collectors.toList());
+    return ResponseEntity.ok(responses);
+  }
 }

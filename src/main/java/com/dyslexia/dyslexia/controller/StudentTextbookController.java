@@ -1,17 +1,10 @@
 package com.dyslexia.dyslexia.controller;
 
-import com.dyslexia.dyslexia.dto.AccessibilitySettingsUpdateRequestDto;
+import com.dyslexia.dyslexia.dto.PageDetailResponseDto;
 import com.dyslexia.dyslexia.dto.PageDto;
-import com.dyslexia.dyslexia.dto.PageListResponseDto;
 import com.dyslexia.dyslexia.dto.PageProgressUpdateRequestDto;
-import com.dyslexia.dyslexia.dto.StudentTextbookListResponseDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
-import com.dyslexia.dyslexia.entity.Page;
-import com.dyslexia.dyslexia.entity.StudentTextbookAssignment;
-import com.dyslexia.dyslexia.entity.Textbook;
-import com.dyslexia.dyslexia.repository.PageRepository;
-import com.dyslexia.dyslexia.repository.StudentTextbookAssignmentRepository;
-import com.dyslexia.dyslexia.repository.TextbookRepository;
+import com.dyslexia.dyslexia.exception.GlobalApiResponse;
 import com.dyslexia.dyslexia.service.StudentTextbookService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,161 +26,56 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "StudentTextbook", description = "학생 교재 관리 API")
 @RestController
-@RequestMapping("student/textbooks")
+@RequestMapping("students/{studentId}/textbooks")
 @RequiredArgsConstructor
 @Slf4j
 public class StudentTextbookController {
 
   private final StudentTextbookService studentTextbookService;
-  private final StudentTextbookAssignmentRepository assignmentRepository;
-  private final TextbookRepository textbookRepository;
-  private final PageRepository pageRepository;
 
   @Operation(summary = "학생에게 할당된 교재 목록 조회", description = "학생에게 할당된 모든 교재 목록을 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = StudentTextbookListResponseDto.class))),
+          content = @Content(schema = @Schema(implementation = TextbookDto.class))),
       @ApiResponse(responseCode = "404", description = "학생을 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{studentId}")
-  public ResponseEntity<StudentTextbookListResponseDto> getAssignedTextbooks(
+  @GetMapping
+  public ResponseEntity<GlobalApiResponse<List<TextbookDto>>> findAllAssignedTextbookByStudent(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId) {
 
-    log.info("학생 ID: {}의 할당된 문서 목록 조회 요청", studentId);
+    log.info("학생({})의 할당된 교재 목록 조회 요청", studentId);
 
-    try {
-      List<StudentTextbookAssignment> assignments = assignmentRepository.findByStudentId(studentId);
+    var textbooks = studentTextbookService.getAssignedTextbooks(studentId);
 
-      if (assignments.isEmpty()) {
-        return ResponseEntity.ok(
-            StudentTextbookListResponseDto.builder()
-                .success(true)
-                .message("할당된 교재가 없습니다.")
-                .textbooks(List.of())
-                .build()
-        );
-      }
+    String message = textbooks.isEmpty() ? "할당된 교재가 없습니다." : "할당된 교재 목록 조회 성공";
 
-      List<TextbookDto> textbooks = assignments.stream()
-          .map(assignment -> {
-            Textbook textbook = assignment.getTextbook();
-
-            return TextbookDto.builder()
-                .id(textbook.getId())
-                .guardianId(textbook.getGuardian().getId())
-                .title(textbook.getTitle())
-                .updatedAt(textbook.getUpdatedAt())
-                .build();
-          })
-          .toList();
-
-      return ResponseEntity.ok(
-          StudentTextbookListResponseDto.builder()
-              .success(true)
-              .message("할당된 교재 목록 조회 성공")
-              .textbooks(textbooks)
-              .build()
-      );
-
-    } catch (Exception e) {
-      log.error("학생 교재 목록 조회 중 오류 발생", e);
-      return ResponseEntity.status(500).body(
-          StudentTextbookListResponseDto.builder()
-              .success(false)
-              .message("교재 목록 조회 중 오류가 발생했습니다: " + e.getMessage())
-              .build()
-      );
-    }
+    return ResponseEntity.ok(GlobalApiResponse.ok(message, textbooks));
   }
 
   @Operation(summary = "교재 페이지 목록 조회", description = "특정 교재의 모든 페이지 정보를 조회합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "조회 성공",
-          content = @Content(schema = @Schema(implementation = PageListResponseDto.class))),
+          content = @Content(schema = @Schema(implementation = PageDto.class))),
       @ApiResponse(responseCode = "404", description = "교재를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{studentId}/textbook/{textbookId}/pages")
-  public ResponseEntity<PageListResponseDto> getTextbookPages(
+  @GetMapping("{textbookId}/pages")
+  public ResponseEntity<GlobalApiResponse<List<PageDto>>> findAllPageByStudentAndTextbook(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
 
       @Parameter(description = "교재 ID", required = true)
       @PathVariable Long textbookId) {
 
-    log.info("학생 ID: {}, 교재 ID: {}의 페이지 목록 조회 요청", studentId, textbookId);
+    log.info("학생({})의 교재({}) 페이지 목록 조회 요청", studentId, textbookId);
 
-    try {
-      // 교재에 대한 학생의 접근 권한 확인
-      boolean hasAccess = assignmentRepository.findByStudentIdAndTextbookId(studentId, textbookId)
-          .isPresent();
+    List<PageDto> pages = studentTextbookService.getTextbookPages(studentId, textbookId);
 
-      if (!hasAccess) {
-        return ResponseEntity.status(403).body(
-            PageListResponseDto.builder()
-                .success(false)
-                .message("이 문서에 대한 접근 권한이 없습니다.")
-                .build()
-        );
-      }
+    String message = pages.isEmpty() ? "페이지가 없습니다." : "페이지 목록 조회 성공";
 
-      // 교재 존재 여부 확인
-      textbookRepository.findById(textbookId)
-          .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
-
-      // 페이지 목록 조회
-      List<Page> pages = pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId);
-
-      if (pages.isEmpty()) {
-        return ResponseEntity.ok(
-            PageListResponseDto.builder()
-                .success(true)
-                .message("문서에 페이지가 없습니다.")
-                .pages(List.of())
-                .build()
-        );
-      }
-
-      List<PageDto> pageDtos = pages.stream()
-          .map(page -> PageDto.builder()
-              .id(page.getId())
-              .textbookId(page.getTextbook().getId())
-              .pageNumber(page.getPageNumber())
-              .sectionTitle(page.getSectionTitle())
-              .readingLevel(page.getReadingLevel())
-              .wordCount(page.getWordCount())
-              .complexityScore(page.getComplexityScore())
-              .processingStatus(page.getProcessingStatus())
-              .build())
-          .toList();
-
-      return ResponseEntity.ok(
-          PageListResponseDto.builder()
-              .success(true)
-              .message("페이지 목록 조회 성공")
-              .pages(pageDtos)
-              .build()
-      );
-
-    } catch (IllegalArgumentException e) {
-      log.error("교재 페이지 목록 조회 중 오류 발생", e);
-      return ResponseEntity.status(404).body(
-          PageListResponseDto.builder()
-              .success(false)
-              .message(e.getMessage())
-              .build()
-      );
-    } catch (Exception e) {
-      log.error("문서 페이지 목록 조회 중 오류 발생", e);
-      return ResponseEntity.status(500).body(
-          PageListResponseDto.builder()
-              .success(false)
-              .message("페이지 목록 조회 중 오류가 발생했습니다: " + e.getMessage())
-              .build()
-      );
-    }
+    return ResponseEntity.ok(GlobalApiResponse.ok(message, pages));
   }
 
   @Operation(summary = "페이지 상세 조회", description = "특정 페이지의 상세 내용과 팁, 이미지를 조회합니다.")
@@ -196,27 +84,19 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "페이지를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @GetMapping("/{studentId}/page/{pageId}")
-  public ResponseEntity<?> getPageDetail(
+  @GetMapping("/pages/{pageId}")
+  public ResponseEntity<GlobalApiResponse<PageDetailResponseDto>> getPageDetail(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
 
       @Parameter(description = "페이지 ID", required = true)
       @PathVariable Long pageId) {
 
-    log.info("학생 ID: {}, 페이지 ID: {}의 상세 내용 조회 요청", studentId, pageId);
+    log.info("학생({}), 페이지({})의 상세 내용 조회 요청", studentId, pageId);
 
-    try {
-      return studentTextbookService.getPageDetail(studentId, pageId);
-    } catch (Exception e) {
-      log.error("페이지 상세 조회 중 오류 발생", e);
-      return ResponseEntity.status(500).body(
-          PageListResponseDto.builder()
-              .success(false)
-              .message("페이지 상세 조회 중 오류가 발생했습니다: " + e.getMessage())
-              .build()
-      );
-    }
+    PageDetailResponseDto pageDetail = studentTextbookService.getPageDetail(studentId, pageId);
+
+    return ResponseEntity.ok(GlobalApiResponse.ok(pageDetail));
   }
 
   @Operation(summary = "페이지 진행 상태 업데이트", description = "학생의 페이지 학습 진행 상태를 업데이트합니다.")
@@ -225,8 +105,8 @@ public class StudentTextbookController {
       @ApiResponse(responseCode = "404", description = "페이지를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @PostMapping("/{studentId}/page/{pageId}/progress")
-  public ResponseEntity<?> updatePageProgress(
+  @PostMapping("/page/{pageId}/progress")
+  public ResponseEntity<GlobalApiResponse<Void>> updatePageProgress(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
 
@@ -235,28 +115,20 @@ public class StudentTextbookController {
 
       @RequestBody PageProgressUpdateRequestDto request) {
 
-    log.info("학생 ID: {}, 페이지 ID: {}의 진행 상태 업데이트 요청", studentId, pageId);
+    log.info("학생({}), 페이지({})의 진행 상태 업데이트 요청", studentId, pageId);
 
-    try {
-      return studentTextbookService.updatePageProgress(studentId, pageId, request);
-    } catch (Exception e) {
-      log.error("페이지 진행 상태 업데이트 중 오류 발생", e);
-      return ResponseEntity.status(500).body(
-          PageListResponseDto.builder()
-              .success(false)
-              .message("페이지 진행 상태 업데이트 중 오류가 발생했습니다: " + e.getMessage())
-              .build()
-      );
-    }
+    studentTextbookService.updatePageProgress(studentId, pageId, request);
+
+    return ResponseEntity.ok(GlobalApiResponse.ok("페이지 진행 상태가 업데이트되었습니다.", null));
   }
 
-  @Operation(summary = "페이지 접근성 설정 업데이트", description = "학생의 페이지 접근성 설정을 업데이트합니다.")
+  /*@Operation(summary = "페이지 접근성 설정 업데이트", description = "학생의 페이지 접근성 설정을 업데이트합니다.")
   @ApiResponses({
       @ApiResponse(responseCode = "200", description = "업데이트 성공"),
       @ApiResponse(responseCode = "404", description = "페이지를 찾을 수 없음"),
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
-  @PostMapping("/{studentId}/page/{pageId}/accessibility")
+  @PostMapping("/page/{pageId}/accessibility")
   public ResponseEntity<?> updateAccessibilitySettings(
       @Parameter(description = "학생 ID", required = true)
       @PathVariable Long studentId,
@@ -279,5 +151,5 @@ public class StudentTextbookController {
               .build()
       );
     }
-  }
+  }*/
 } 
