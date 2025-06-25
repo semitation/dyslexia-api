@@ -1,5 +1,6 @@
 #!/bin/bash
 
+CONTAINER_NAME="dyslexia_app"
 COMPOSE_PROJECT_PATH="/home/ubuntu/app"
 ARTIFACT_PATH="/opt/codedeploy-agent/deployment-root/$DEPLOYMENT_GROUP_ID/$DEPLOYMENT_ID/deployment-archive"
 
@@ -16,6 +17,11 @@ export APP_IMAGE_URI=$NEW_IMAGE_URI
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 cd $COMPOSE_PROJECT_PATH
+
+if [ $(docker ps -q -f name=^/${CONTAINER_NAME}$/) ]; then
+  docker-compose stop app
+  docker-compose rm -f app
+fi
 
 docker-compose pull app
 
