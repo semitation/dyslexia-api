@@ -1,7 +1,6 @@
 package com.dyslexia.dyslexia.entity;
 
 import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
-import com.dyslexia.dyslexia.enums.Grade;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -47,11 +46,8 @@ public class Textbook {
   @Column(name = "page_count")
   private Integer pageCount;
 
-  @Enumerated(EnumType.STRING)
-  private Grade minGrade;
-
-  @Enumerated(EnumType.STRING)
-  private Grade maxGrade;
+  @Column(name = "learn_rate")
+  private Integer learnRate;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "convert_process_status", nullable = false)
@@ -67,14 +63,12 @@ public class Textbook {
   private final List<Page> pages = new ArrayList<>();
 
   @Builder
-  public Textbook(Document document, Guardian guardian, String title, Integer pageCount,
-      Grade minGrade, Grade maxGrade) {
+  public Textbook(Document document, Guardian guardian, String title, Integer pageCount, Integer learnRate) {
     this.document = document;
     this.guardian = guardian;
     this.title = title;
     this.pageCount = pageCount;
-    this.minGrade = minGrade;
-    this.maxGrade = maxGrade;
+    this.learnRate = learnRate;
     this.convertProcessStatus = ConvertProcessStatus.PENDING;
     this.createdAt = LocalDateTime.now();
     this.updatedAt = LocalDateTime.now();
@@ -89,8 +83,8 @@ public class Textbook {
     this.convertProcessStatus = processStatus;
   }
 
-  public void setPageCount(Integer pageCount) {
-    this.pageCount = pageCount;
+  public void setLearnRate(Integer learnRate) {
+    this.learnRate = learnRate;
   }
 
   public void addPage(Page page) {

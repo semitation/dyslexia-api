@@ -5,6 +5,7 @@ import static com.dyslexia.dyslexia.util.FileHelper.extractExtension;
 import com.dyslexia.dyslexia.domain.pdf.TextBlock;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
+import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Page;
@@ -12,6 +13,7 @@ import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Textbook;
 import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
+import com.dyslexia.dyslexia.mapper.DocumentMapper;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.repository.PageImageRepository;
@@ -70,33 +72,39 @@ public class ConvertProcessService {
   private final DeepLTranslatorService deepLTranslatorService;
   private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
   private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
+
+  private DocumentMapper documentMapper;
+
   // 스레드 풀 (어휘 분석 전용)
   private final ExecutorService vocabularyAnalysisExecutor = Executors.newFixedThreadPool(
       Math.min(Runtime.getRuntime().availableProcessors() * 2, 16));  // 최대 16개로 제한
 
-
   @Transactional
-  public Document uploadDocument(Long guardianId, MultipartFile file, String title, Grade grade)
+  public DocumentDto uploadDocument(Long guardianId, MultipartFile file, String title)
       throws IOException {
     Guardian guardian = guardianRepository.findById(guardianId)
         .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
 
     String originalFilename = file.getOriginalFilename();
-    String fileExtension = extractExtension(originalFilename);
 
-    log.info("파일 업로드 요청 처리 - 원본 파일명: {}, 보호자 ID: {}", originalFilename, guardianId);
+    log.info("파일 업로드 요청 처리 시작: 보호자({}), 원본 파일명: {}", originalFilename, guardianId);
 
-    Document document = Document.builder().guardian(guardian).title(title)
+    Document document = Document.builder()
+        .guardian(guardian)
+        .title(title)
         .originalFilename(originalFilename)
         .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
-        .fileSize(file.getSize()).mimeType(file.getContentType()).build();
+        .fileSize(file.getSize())
+        .mimeType(file.getContentType())
+        .build();
 
     document = documentRepository.save(document);
 
+    String fileExtension = extractExtension(originalFilename);
     String uniqueFilename = UUID.randomUUID() + fileExtension;
 
     String filePath = storageService.store(file, uniqueFilename, guardianId, document.getId());
-    log.info("파일 저장 경로: {}", filePath);
+    log.info("파일 저장 완료: {}", filePath);
 
     document.setFilePath(filePath);
 
@@ -104,47 +112,47 @@ public class ConvertProcessService {
 
     List<String> rawPages = pdfParserService.parsePages(document.getFilePath());
 
-    long textbookId = CreateTextbook(document.getId(), rawPages.size(), grade, grade);
+    long textbookId = CreateTextbook(document.getId(), rawPages.size());
 
-    if (textbookId == -1) {
-      throw new IllegalArgumentException("교재를 찾을 수 없습니다.");
-    }
+    scheduleAsyncConvert(textbookId, rawPages);
 
+    return documentMapper.toDto(document);
+  }
+
+  private void scheduleAsyncConvert(long textbookId, List<String> rawPages) {
     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
       @Override
       public void afterCommit() {
         CompletableFuture.runAsync(() -> processConvertAsync(textbookId, rawPages), taskExecutor);
       }
     });
-
-    return document;
   }
 
-  private long CreateTextbook(long documentId, int pageCount, Grade maxGrade, Grade minGrade) {
-    try {
-      Document document = documentRepository.findById(documentId)
-          .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+  private long CreateTextbook(long documentId, int pageCount) {
+    Document document = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
 
-      Textbook textbook = Textbook.builder().document(document).guardian(document.getGuardian())
-          .title(document.getTitle()).pageCount(pageCount).maxGrade(maxGrade).minGrade(minGrade)
-          .build();
+    Textbook textbook = Textbook.builder()
+        .document(document)
+        .guardian(document.getGuardian())
+        .title(document.getTitle())
+        .pageCount(pageCount)
+        .learnRate(0)
+        .build();
 
-      textbook.setConvertProcessStatus(ConvertProcessStatus.PROCESSING);
+    textbook.setConvertProcessStatus(ConvertProcessStatus.PROCESSING);
 
-      textbookRepository.save(textbook);
+    textbook = textbookRepository.save(textbook);
 
-      return textbook.getId();
+    log.info("교재({}) 생성 완료", textbook.getId());
 
-    } catch (Exception e) {
-      log.error("문서({}) ", documentId, e);
-      return -1;
-    }
+    return textbook.getId();
   }
 
   private void processConvertAsync(Long textbookId, List<String> rawPages) {
     try {
       Textbook textbook = textbookRepository.findById(textbookId)
-          .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+          .orElseThrow(() -> new IllegalArgumentException("교재를 찾을 수 없습니다."));
 
       log.info("교재({}) 비동기 처리를 시작합니다.", textbookId);
 
@@ -168,11 +176,11 @@ public class ConvertProcessService {
 
           CompletableFuture<Void> pageFuture = CompletableFuture.runAsync(() -> {
             try {
-              log.info("교재({}) 변환 병렬 처리 시작 - 페이지 번호: {}", textbookId, pageNumber);
+              log.info("교재({}) 변환 병렬 처리 시작: 페이지({})", textbookId, pageNumber);
               processPageWithTransaction(textbook, pageNumber, pageContent);
-              log.info("교재({}) 변환 병렬 처리 완료 - 페이지 번호: {}", textbookId, pageNumber);
+              log.info("교재({}) 변환 병렬 처리 완료: 페이지({})", textbookId, pageNumber);
             } catch (Exception e) {
-              log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbookId, pageNumber, e);
+              log.error("교재({}) 처리 중 오류 발생: 페이지({})", textbookId, pageNumber, e);
               throw e; // 상위 CompletableFuture 에서 처리하도록 재발생
             }
           }, pageProcessorExecutor).exceptionally(ex -> {
@@ -265,12 +273,12 @@ public class ConvertProcessService {
    */
   @Transactional
   public void updatePageStatusToFailed(Textbook textbook, int pageNumber) {
-    Optional<Page> page = pageRepository.findByTextbookAndPageNumber(textbook, pageNumber);
-    if (page.isPresent()) {
-      page.get().setProcessingStatus(ConvertProcessStatus.FAILED);
-      pageRepository.save(page.get());
-      log.warn("교재({}) 페이지({}) 상태를 FAILED로 변경", textbook.getId(), pageNumber);
-    }
+    pageRepository.findByTextbookAndPageNumber(textbook, pageNumber)
+        .ifPresent(p -> {
+          p.setProcessingStatus(ConvertProcessStatus.FAILED);
+          pageRepository.save(p);
+          log.warn("교재({}) 페이지({}) 상태를 FAILED로 변경", textbook.getId(), pageNumber);
+        });
   }
 
   /*
@@ -296,17 +304,17 @@ public class ConvertProcessService {
             pageNumber);
         if (existingPage.isPresent()
             && existingPage.get().getProcessingStatus() == ConvertProcessStatus.COMPLETED) {
-          log.info("이미 처리된 페이지({}): 교재({})", pageNumber, textbook.getId());
+          log.info("교재({}) 페이지({}) 이미 처리됨", pageNumber, textbook.getId());
           return;
         }
 
         // 1. OpenAI 번역 수행
         String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent,
-            textbook.getMaxGrade());
+            Grade.GRADE_3);
 
         // 2. 번역된 텍스트로 AI Block 처리
         PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(
-            translatedContent, textbook.getMaxGrade());
+            translatedContent, Grade.GRADE_3);
 
         // 3-1. blocks를 JSON 문자열로 변환
         String processedContentStr;
@@ -363,11 +371,11 @@ public class ConvertProcessService {
           // 모든 결과 일괄 저장
           if (!allEntities.isEmpty()) {
             saveVocabularyAnalysisInBatch(allEntities);
-            log.info("어휘 분석 완료: 문서 ID: {}, 페이지 번호: {}, 총 {}개 단어 처리", textbook.getId(), pageNumber,
+            log.info("문서({}) 페이지({}) 어휘 분석 완료: 총 {}개 단어 처리됨", textbook.getId(), pageNumber,
                 allEntities.size());
           }
         } catch (Exception e) {
-          log.error("배치 비동기 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber, e);
+          log.error("문서({}) 페이지({}) 배치 비동기 처리 중 오류 발생", textbook.getId(), pageNumber, e);
         }
 
         // 4. 메타데이터 추출 (번역된 텍스트 기반)
@@ -405,9 +413,8 @@ public class ConvertProcessService {
         }
 
         // 7. 페이지 팁 추출
-        log.info("용어 추출 시작: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber);
-        List<TermInfo> terms = aiPromptService.extractTerms(translatedContent,
-            textbook.getMaxGrade());
+        log.info("문서({}) 페이지({}) 용어 추출 시작", textbook.getId(), pageNumber);
+        List<TermInfo> terms = aiPromptService.extractTerms(translatedContent, Grade.GRADE_3);
         for (TermInfo termInfo : terms) {
           PageTip pageTip = PageTip.builder()
               .page(page)
@@ -421,26 +428,27 @@ public class ConvertProcessService {
 
           pageTipRepository.save(pageTip);
         }
-        log.info("용어 {} 개 처리 완료: 문서 ID: {}, 페이지 번호: {}", terms.size(), textbook.getId(),
+        log.info("문서({}) 페이지({}) 용어 {}개 처리 완료", terms.size(), textbook.getId(),
             pageNumber);
 
         page.setProcessingStatus(ConvertProcessStatus.COMPLETED);
         pageRepository.save(page);
 
-        log.info("페이지 처리 완료: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber);
+        log.info("문서({}) 페이지({}) 페이지 처리 완료", textbook.getId(), pageNumber);
       } finally {
         // ThreadLocal 정리
         ConvertProcessHolder.clear();
       }
 
     } catch (Exception e) {
-      log.error("페이지 처리 중 오류 발생: 문서 ID: {}, 페이지 번호: {}", textbook.getId(), pageNumber, e);
+      log.error("문서({}) 페이지({}) 페이지 처리 중 오류 발생", textbook.getId(), pageNumber, e);
 
       Optional<Page> page = pageRepository.findByTextbookAndPageNumber(textbook, pageNumber);
       if (page.isPresent()) {
         page.get().setProcessingStatus(ConvertProcessStatus.FAILED);
         pageRepository.save(page.get());
-        log.error("페이지 ID: {}의 상태를 FAILED로 변경했습니다.", page.get().getId());
+        log.error("문서({}) 페이지({})의 상태를 FAILED로 변경했습니다.", page.get().getTextbook().getId(),
+            page.get().getId());
       }
 
       // 오류 발생 시에도 ThreadLocal 반드시 정리
@@ -549,31 +557,23 @@ public class ConvertProcessService {
     Textbook textbook = textbookRepository.findById(textbookId)
         .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
 
-    if (textbook.getConvertProcessStatus() == ConvertProcessStatus.COMPLETED) {
-      return 100;
-    } else if (textbook.getConvertProcessStatus() == ConvertProcessStatus.PENDING) {
-      return 0;
-    } else if (textbook.getConvertProcessStatus() == ConvertProcessStatus.FAILED) {
-      // 실패한 경우, 처리된 페이지 비율 계산
-      long completedPages = pageRepository.findByTextbookId(textbookId).stream()
-          .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED).count();
+    ConvertProcessStatus status = textbook.getConvertProcessStatus();
 
-      int totalPages = textbook.getPageCount() != null ? textbook.getPageCount() : 0;
-      if (totalPages > 0) {
-        return (int) ((completedPages * 100) / totalPages);
-      }
-      return 0;
-    } else {
-      // PROCESSING 상태인 경우
-      long completedPages = pageRepository.findByTextbookId(textbookId).stream()
-          .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED).count();
+    return switch (status) {
+      case COMPLETED -> 100;
+      case PENDING -> 0;
+      case FAILED, PROCESSING -> {
+        int totalPages = textbook.getPageCount() != null ? textbook.getPageCount() : 0;
+        if (totalPages == 0) {
+          yield 0;
+        }
 
-      int totalPages = textbook.getPageCount() != null ? textbook.getPageCount() : 0;
-      if (totalPages > 0) {
-        return (int) ((completedPages * 100) / totalPages);
+        long completedPages = pageRepository.findByTextbookId(textbookId).stream()
+            .filter(p -> p.getProcessingStatus() == ConvertProcessStatus.COMPLETED).count();
+
+        yield (int) ((completedPages * 100) / totalPages);
       }
-      return 0;
-    }
+    };
   }
 
   @Transactional
@@ -610,16 +610,19 @@ public class ConvertProcessService {
   // 클래스 종료 시 스레드 풀 정리
   @PreDestroy
   public void cleanup() {
-    if (vocabularyAnalysisExecutor != null) {
-      vocabularyAnalysisExecutor.shutdown();
-      try {
-        if (!vocabularyAnalysisExecutor.awaitTermination(1, TimeUnit.MINUTES)) {
-          vocabularyAnalysisExecutor.shutdownNow();
-        }
-      } catch (InterruptedException e) {
+    if (vocabularyAnalysisExecutor == null) {
+      return;
+    }
+
+    vocabularyAnalysisExecutor.shutdown();
+
+    try {
+      if (!vocabularyAnalysisExecutor.awaitTermination(1, TimeUnit.MINUTES)) {
         vocabularyAnalysisExecutor.shutdownNow();
-        Thread.currentThread().interrupt();
       }
+    } catch (InterruptedException e) {
+      vocabularyAnalysisExecutor.shutdownNow();
+      Thread.currentThread().interrupt();
     }
   }
 

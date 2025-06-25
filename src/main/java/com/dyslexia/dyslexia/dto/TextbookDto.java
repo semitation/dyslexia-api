@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -26,6 +27,12 @@ public class TextbookDto {
 
     @Schema(description = "페이지 수", example = "1")
     private Integer pageCount;
+
+    @Schema(description = "학습 진행률", example = "20")
+    private Integer learnRate;
+
+    @Schema(description = "처리 상태", example = "PROCESSING")
+    private ConvertProcessStatus convertProcessStatus;
 
     @Schema(description = "생성 시간")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

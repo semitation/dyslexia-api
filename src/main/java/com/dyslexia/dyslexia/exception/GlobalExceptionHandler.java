@@ -1,32 +1,59 @@
 package com.dyslexia.dyslexia.exception;
 
-import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
-import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
+import jakarta.persistence.EntityNotFoundException;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
-import org.springframework.validation.FieldError;
-import org.springframework.web.bind.*;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
-
-import java.io.IOException;
-import java.time.LocalDateTime;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-  private ResponseEntity<ApiErrorResponse> buildErrorResponse(HttpStatus status, String message) {
-    ApiErrorResponse error = ApiErrorResponse.builder()
-        .status(status.value())
-        .error(status.getReasonPhrase())
-        .message(message)
-        .timestamp(LocalDateTime.now())
-        .build();
-    return ResponseEntity.status(status).body(error);
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<GlobalApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+    return ResponseEntity.status(403).body(
+        GlobalApiResponse.fail(ex.getMessage())
+    );
   }
 
-  @ExceptionHandler(MethodArgumentNotValidException.class)
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ResponseEntity<GlobalApiResponse<Void>> handleNotFound(EntityNotFoundException ex) {
+    return ResponseEntity.status(404).body(
+        GlobalApiResponse.fail(ex.getMessage())
+    );
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ResponseEntity<GlobalApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+    return ResponseEntity.status(404).body(
+        GlobalApiResponse.fail(ex.getMessage())
+    );
+  }
+
+  @ExceptionHandler(Exception.class)
+  public ResponseEntity<GlobalApiResponse<Void>> handleGeneralError(Exception ex) {
+    return ResponseEntity.status(500).body(
+        GlobalApiResponse.fail("오류가 발생했습니다: " + ex.getMessage())
+    );
+  }
+
+  @ExceptionHandler(IOException.class)
+  public ResponseEntity<GlobalApiResponse<Void>> handleFileUploadError(IOException ex) {
+    return ResponseEntity.status(500).body(
+        GlobalApiResponse.fail("파일 업로드 중 오류가 발생했습니다: " + ex.getMessage())
+    );
+  }
+
+  @ExceptionHandler(RuntimeException.class)
+  public ResponseEntity<GlobalApiResponse<Void>> handleRuntime(RuntimeException ex) {
+    return ResponseEntity.status(500).body(
+        GlobalApiResponse.fail(ex.getMessage())
+    );
+  }
+
+  /*@ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
     StringBuilder sb = new StringBuilder();
     for (FieldError error : ex.getBindingResult().getFieldErrors()) {
@@ -79,5 +106,5 @@ public class GlobalExceptionHandler {
       UserAlreadyExistsException ex) {
     log.warn("Guardian already exists: {}", ex.getMessage());
     return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
-  }
+  }*/
 }
