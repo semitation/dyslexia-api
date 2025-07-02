@@ -1,5 +1,8 @@
 package com.dyslexia.dyslexia.service;
 
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.dyslexia.dyslexia.config.ReplicateConfig;
 import com.dyslexia.dyslexia.domain.pdf.Block;
 import com.dyslexia.dyslexia.domain.pdf.BlockImpl;
@@ -14,15 +17,14 @@ import com.dyslexia.dyslexia.util.PromptBuilder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -51,14 +53,16 @@ public class AIPromptService {
   private static final String MODEL = "gpt-4o-mini";
   private final RestTemplate restTemplate;
   private final ObjectMapper objectMapper;
+  private final AmazonS3Client amazonS3Client;
+
   @Value("${ai.api.url}")
   private String aiApiUrl;
   @Value("${ai.api.key}")
   private String aiApiKey;
+  @Value("${cloud.aws.s3.bucket}")
+  private String bucketName;
 
   private final ReplicateConfig replicateConfig;
-  @Value("${app.upload.dir:uploads}")
-  private String uploadDir;
 
   private Map<String, Object> requestToApi(Map<String, Object> requestBody) {
     HttpHeaders headers = new HttpHeaders();
@@ -123,12 +127,11 @@ public class AIPromptService {
 
       String content = extractMessageContent(response);
       content = extractJsonContent(content);
-      
-      // JSON 문자열 전처리
-      content = content.replaceAll("\\r\\n|\\r|\\n", " ") // 줄바꿈 문자를 공백으로 변환
-                      .replaceAll("\\s+", " ") // 연속된 공백을 하나로 통합
-                      .trim(); // 앞뒤 공백 제거
-      
+
+      content = content.replaceAll("\\r\\n|\\r|\\n", " ")
+                      .replaceAll("\\s+", " ")
+                      .trim();
+
       if (!(content.startsWith("[") && content.endsWith("]"))) {
         log.info("AI 응답이 Block 구조(JSON 배열)가 아님. content: {}", content);
         return new PageBlockAnalysisResult(content, new ArrayList<>());
@@ -139,14 +142,12 @@ public class AIPromptService {
       try {
         List<BlockImpl> blockImpls = objectMapper.readValue(content, new TypeReference<>() {});
         log.info("역직렬화된 블록 수: {}", blockImpls.size());
-        
-        // 각 블록의 타입 로깅
+
         blockImpls.forEach(block -> log.info("블록 정보 - ID: {}, Raw Type: {}, JSON: {}",
             block.getId(),
             block.getType(),
             block));
-        
-        // Stream을 사용하여 블록 처리 및 이미지 생성을 통합
+
         List<Block> blocks = blockImpls.stream()
             .map(block -> {
                 try {
@@ -183,7 +184,6 @@ public class AIPromptService {
             })
             .collect(Collectors.toList());
 
-        // 이미지 블록 처리 결과 로깅
         List<Block> imageBlocks = blocks.stream()
             .filter(block -> block.getType() == BlockType.PAGE_IMAGE)
             .toList();
@@ -256,7 +256,7 @@ public class AIPromptService {
 
     } catch (Exception e) {
       log.error("읽기 난이도 계산 중 오류 발생", e);
-      return 5; // 오류 시 중간 값으로 대체
+      return 5;
     }
   }
 
@@ -401,7 +401,6 @@ public class AIPromptService {
             }
             content2 = content2.trim();
 
-            // 소수점 뒤에 숫자가 없는 경우(예: 1.)를 1.0으로 보정
             Pattern p = Pattern.compile("(\\d+)\\.(?!\\d)");
             Matcher m = p.matcher(content2);
             StringBuilder sb = new StringBuilder();
@@ -415,10 +414,8 @@ public class AIPromptService {
                 @SuppressWarnings("unchecked")
                 List<Map<String, Object>> imagesData = objectMapper.readValue(content2, List.class);
                 List<ImageInfo> images = new ArrayList<>();
-                
-                // 각 이미지 설명에 대해 Replicate API로 이미지 생성
+
                 for (Map<String, Object> imageData : imagesData) {
-                    // 이미지 생성을 위한 프롬프트 구성
                     String description = (String) imageData.get("description");
                     String imageTypeStr = (String) imageData.get("imageType");
                     ImageType imageType = ImageType.valueOf(imageTypeStr);
@@ -431,7 +428,6 @@ public class AIPromptService {
                     Map<String, Object> position = (Map<String, Object>) imageData.get("position");
                     com.fasterxml.jackson.databind.JsonNode positionJson = objectMapper.valueToTree(position);
 
-                    // 이제 generateImageWithReplicate 메서드에서 이미 로컬 경로를 반환하므로 추가 처리 필요 없음
                     images.add(new ImageInfo(imageUrl, imageType, conceptReference, altText, positionJson));
                 }
                 
@@ -537,11 +533,9 @@ public class AIPromptService {
                 
                 if (imageUrl != null && !imageUrl.isEmpty()) {
                   log.info("이미지 URL 생성 성공: {}", imageUrl);
-                  
-                  // 이미지 URL 대신 로컬 파일 경로를 반환하도록 수정
-                  String localFilePath = saveImageToLocalFile(imageUrl, blockId);
-                  log.info("이미지가 로컬에 저장됨: {}", localFilePath);
-                  return localFilePath;
+
+                  String s3ImageUrl = saveImageToS3(imageUrl, blockId);
+                  return s3ImageUrl;
                 }
               }
               
@@ -575,7 +569,7 @@ public class AIPromptService {
     }
   }
 
-  private String saveImageToLocalFile(String imageUrl, String blockId) {
+  private String saveImageToS3(String imageUrl, String blockId) {
     try {
       Long guardianId = ConvertProcessHolder.getGuardianId();
       Long textbookId = ConvertProcessHolder.getTextbookId();
@@ -585,32 +579,46 @@ public class AIPromptService {
         log.error("이미지 저장 실패: guardianId({}) 또는 textbookId({})가 없습니다.", guardianId, textbookId);
         throw new IllegalStateException("guardianId와 textbookId가 필요합니다.");
       }
-      
-      String saveDirectory = Paths.get(uploadDir, guardianId.toString(), textbookId.toString(), pageNumber.toString()).toString();
-      Path directoryPath = Paths.get(saveDirectory);
-      
-      log.info("이미지 저장 경로: {}", saveDirectory);
-      
-      if (!Files.exists(directoryPath)) {
-        Files.createDirectories(directoryPath);
-        log.info("이미지 저장 디렉토리 생성 완료: {}", directoryPath.toAbsolutePath());
-      }
-      
+
       String fileName = blockId + ".webp";
-      Path filePath = Paths.get(saveDirectory, fileName);
+      String s3Key = String.format("%d/%d/%d/%s", guardianId, textbookId, pageNumber, fileName);
+      
 
       URL url = new URL(imageUrl);
-      try (java.io.InputStream in = url.openStream()) {
-        Files.copy(in, filePath, StandardCopyOption.REPLACE_EXISTING);
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      
+      try (InputStream inputStream = url.openStream()) {
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+          baos.write(buffer, 0, bytesRead);
+        }
+      }
+      
+      byte[] imageBytes = baos.toByteArray();
+
+      ObjectMetadata metadata = new ObjectMetadata();
+      metadata.setContentLength(imageBytes.length);
+      metadata.setContentType("image/webp");
+      metadata.setContentDisposition("inline; filename=\"" + fileName + "\"");
+
+      try (ByteArrayInputStream inputStream = new ByteArrayInputStream(imageBytes)) {
+        PutObjectRequest putObjectRequest = new PutObjectRequest(
+            bucketName,
+            s3Key,
+            inputStream,
+            metadata
+        );
+        
+        amazonS3Client.putObject(putObjectRequest);
       }
 
-      String absoluteFilePath = filePath.toAbsolutePath().toString();
-      log.info("이미지가 저장된 전체 경로: {} (Block ID: {})", absoluteFilePath, blockId);
-
-      return filePath.subpath(3, filePath.getNameCount()).toString();
+      String s3Url = amazonS3Client.getUrl(bucketName, s3Key).toString();
+      
+      return s3Url;
 
     } catch (Exception e) {
-      log.error("이미지를 로컬에 저장하는 중 오류 발생: {}", e.getMessage(), e);
+      log.error("이미지를 S3에 저장하는 중 오류 발생: {}", e.getMessage(), e);
       return imageUrl;
     }
   }

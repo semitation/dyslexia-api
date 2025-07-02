@@ -13,7 +13,7 @@ spring:
   jpa:
     database: postgresql
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
       default_batch_fetch_size: 100
 
   servlet:
@@ -21,20 +21,6 @@ spring:
       max-file-size: 100MB
       max-request-size: 100MB
       file-size-threshold: 2KB
-
-  web:
-    resources:
-      static-locations:
-        - classpath:/static/
-        - classpath:/public/
-        - classpath:/resources/
-        - classpath:/META-INF/resources/
-        - file:${user.home}/${UPLOAD_DIR}/
-        - file:./uploads/
-
-app:
-  upload:
-    dir: ${user.home}/${UPLOAD_DIR}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -81,3 +67,15 @@ replicate:
     url: https://api.replicate.com/v1/predictions
     key: ${REPLICATE_API_KEY}
     model: recraft-ai/recraft-v3
+
+cloud:
+  aws:
+    s3:
+      bucket: ${AWS_S3_BUCKET_NAME}
+    stack:
+      auto: false
+    region:
+      static: ${AWS_REGION}
+    credentials:
+      access-key: ${AWS_ACCESS_KEY}
+      secret-key: ${AWS_SECRET_KEY}

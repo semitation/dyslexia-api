@@ -424,7 +424,7 @@ public class VocabularyAnalysisPromptService {
 
             // AI 요청
             Map<String, Object> response = restTemplate.postForObject(aiApiUrl, request, Map.class);
-            log.info("배치 어휘 분석 AI 요청: {}", objectMapper.writeValueAsString(requestBody));
+//            log.info("배치 어휘 분석 AI 요청: {}", objectMapper.writeValueAsString(requestBody));
 
             // 응답 처리
             @SuppressWarnings("unchecked")
