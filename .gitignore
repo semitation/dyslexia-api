@@ -43,6 +43,5 @@ docs.json
 review.md
 generated
 .cursor
-uploads
 ./logs
 ./logs/app.log

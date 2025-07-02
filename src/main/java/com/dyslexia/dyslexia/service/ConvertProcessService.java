@@ -72,8 +72,7 @@ public class ConvertProcessService {
   private final DeepLTranslatorService deepLTranslatorService;
   private final VocabularyAnalysisRepository vocabularyAnalysisRepository;
   private final VocabularyAnalysisPromptService vocabularyAnalysisPromptService;
-
-  private DocumentMapper documentMapper;
+  private final DocumentMapper documentMapper;
 
   // 스레드 풀 (어휘 분석 전용)
   private final ExecutorService vocabularyAnalysisExecutor = Executors.newFixedThreadPool(
@@ -93,7 +92,7 @@ public class ConvertProcessService {
         .guardian(guardian)
         .title(title)
         .originalFilename(originalFilename)
-        .filePath("temp_" + System.currentTimeMillis()) // 임시 경로 설정
+        .filePath("temp_" + System.currentTimeMillis())
         .fileSize(file.getSize())
         .mimeType(file.getContentType())
         .build();

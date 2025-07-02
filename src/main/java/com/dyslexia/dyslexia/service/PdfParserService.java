@@ -6,8 +6,9 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,12 +17,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PdfParserService {
 
-    public List<String> parsePages(String filePath) throws IOException {
-        log.info("PDF 파싱 시작: {}", filePath);
+    public List<String> parsePages(String s3Url) throws IOException {
+        if (s3Url == null || !s3Url.startsWith("http")) {
+            throw new IllegalArgumentException("유효한 S3 URL이 필요합니다: " + s3Url);
+        }
         
         List<String> pages = new ArrayList<>();
         
-        try (PDDocument document = PDDocument.load(new File(filePath))) {
+        PDDocument document = null;
+        try {
+            URL url = new URL(s3Url);
+            try (InputStream inputStream = url.openStream()) {
+                document = PDDocument.load(inputStream);
+            }
+            
             PDFTextStripper stripper = new PDFTextStripper();
             int pageCount = document.getNumberOfPages();
             
@@ -33,21 +42,20 @@ public class PdfParserService {
                 log.debug("페이지 {} 파싱 완료, 글자 수: {}", i, pageText.length());
             }
             
-            log.info("PDF 파싱 완료: 전체 {} 페이지", pageCount);
+        } catch (Exception e) {
+            log.error("S3 PDF 파싱 중 오류 발생: {}", s3Url, e);
+            throw new IOException("S3에서 PDF를 파싱할 수 없습니다: " + e.getMessage(), e);
+        } finally {
+            if (document != null) {
+                try {
+                    document.close();
+                } catch (IOException e) {
+                    log.warn("PDF 문서 닫기 중 오류 발생", e);
+                }
+            }
         }
         
         return pages;
     }
     
-    public List<List<String>> extractImages(String filePath) throws IOException {
-        log.info("PDF 이미지 추출 시작: {}", filePath);
-        
-        /**
-         * 이 메서드는 PDF라이브러리를 사용하여 
-         *PDF에서 이미지를 추출하고 저장하는 로직을 구현해야함
-        현재는 구현 생략 - 은기
-         */
-        
-        return new ArrayList<>();
-    }
-} 
+}
