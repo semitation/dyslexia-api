@@ -67,7 +67,6 @@ replicate:
     url: https://api.replicate.com/v1/predictions
     key: ${REPLICATE_API_KEY}
     model: recraft-ai/recraft-v3
-
 cloud:
   aws:
     s3:
