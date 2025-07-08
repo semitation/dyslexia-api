@@ -51,8 +51,6 @@ public class KakaoService {
 
         UserType userType = determineUserType(clientId);
 
-
-
         if (userType != UserType.UNREGISTERED) {
             String newAccessToken = jwtTokenProvider.createAccessToken(clientId, userType.name());
             String newRefreshToken = jwtTokenProvider.createRefreshToken(clientId);
