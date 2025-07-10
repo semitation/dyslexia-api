@@ -1,14 +1,4 @@
 services:
-#  db:
-#    image: postgres:15
-#    restart: unless-stopped
-#    container_name: dyslexia_db
-#    env_file: .env
-#    ports:
-#      - "5432:5432"
-#    volumes:
-#      - dyslexia_db:/var/lib/postgresql/data
-
   app:
     image: openjdk:17-slim
     container_name: dyslexia_app
@@ -17,11 +7,5 @@ services:
       - "8080:8080"
     volumes:
       - ./app.jar:/app/app.jar
-      - ./logs:/var/log/dyslexia-app
-#    depends_on:
-#      - db
     restart: unless-stopped
     command: [ "java", "-jar", "/app/app.jar" ]
-
-#volumes:
-#  dyslexia_db:

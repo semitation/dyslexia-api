@@ -42,7 +42,7 @@ public class GuardianController {
     return ResponseEntity.ok(guardianService.getById(id));
   }
 
-  @Operation(summary = "id로 보호자 조회", description = "ID를 통해 보호자 정보를 조회합니다.")
+  @Operation(summary = "클라이언트 ID로 보호자 조회", description = "클라이언트 ID를 통해 보호자 정보를 조회합니다.")
   @ApiResponses(value = {
     @ApiResponse(responseCode = "200", description = "조회 성공",
       content = @Content(schema = @Schema(implementation = GuardianDto.class))),
