@@ -13,6 +13,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(AccessDeniedException.class)
   public ResponseEntity<GlobalApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
+    log.warn("Access denied: {}", ex.getMessage());
     return ResponseEntity.status(403).body(
         GlobalApiResponse.fail(ex.getMessage())
     );
@@ -20,6 +21,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(EntityNotFoundException.class)
   public ResponseEntity<GlobalApiResponse<Void>> handleNotFound(EntityNotFoundException ex) {
+    log.warn("Entity not found: {}", ex.getMessage());
     return ResponseEntity.status(404).body(
         GlobalApiResponse.fail(ex.getMessage())
     );
@@ -27,6 +29,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<GlobalApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
+    log.warn("Illegal argument: {}", ex.getMessage());
     return ResponseEntity.status(404).body(
         GlobalApiResponse.fail(ex.getMessage())
     );
@@ -34,6 +37,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ResponseEntity<GlobalApiResponse<Void>> handleGeneralError(Exception ex) {
+    log.error("Unexpected Exception occurred", ex);
     return ResponseEntity.status(500).body(
         GlobalApiResponse.fail("오류가 발생했습니다: " + ex.getMessage())
     );
@@ -41,6 +45,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(IOException.class)
   public ResponseEntity<GlobalApiResponse<Void>> handleFileUploadError(IOException ex) {
+    log.error("IOException occurred", ex);
     return ResponseEntity.status(500).body(
         GlobalApiResponse.fail("파일 업로드 중 오류가 발생했습니다: " + ex.getMessage())
     );
@@ -48,6 +53,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(RuntimeException.class)
   public ResponseEntity<GlobalApiResponse<Void>> handleRuntime(RuntimeException ex) {
+    log.error("RuntimeException occurred", ex);
     return ResponseEntity.status(500).body(
         GlobalApiResponse.fail(ex.getMessage())
     );
