@@ -2,7 +2,7 @@ package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.PageContentResponseDto;
 import com.dyslexia.dyslexia.dto.PageTipResponseDto;
-import com.dyslexia.dyslexia.exception.GlobalApiResponse;
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.service.TextbookContentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,7 +57,7 @@ public class TextbookContentController {
       }
   )
 
-  public ResponseEntity<GlobalApiResponse<List<PageContentResponseDto>>> findPageByTextbook(
+  public ResponseEntity<CommonResponse<List<PageContentResponseDto>>> findPageByTextbook(
       @Parameter(description = "문서 ID", required = true) @RequestParam(name = "textbookId") Long textbookId,
       @Parameter(description = "페이지 번호 (선택사항)") @RequestParam(name = "page", required = false) Integer pageNumber) {
 
@@ -66,7 +66,7 @@ public class TextbookContentController {
         .map(page -> PageContentResponseDto.fromEntity(page, objectMapper))
         .toList();
 
-    return ResponseEntity.ok(GlobalApiResponse.ok(responses));
+    return ResponseEntity.ok(new CommonResponse<>("페이지 팁 조회 성공", responses));
   }
 
   @GetMapping("/pages/{pageId}/tips")
@@ -86,13 +86,13 @@ public class TextbookContentController {
           )
       }
   )
-  public ResponseEntity<GlobalApiResponse<List<PageTipResponseDto>>> findPageTipsByPage(
+  public ResponseEntity<CommonResponse<List<PageTipResponseDto>>> findPageTipsByPage(
       @Parameter(description = "페이지 ID", required = true) @PathVariable("pageId") Long pageId) {
 
     List<PageTipResponseDto> responses = textbookContentService.getPageTipsByPageId(pageId).stream()
         .map(PageTipResponseDto::fromEntity)
         .toList();
 
-    return ResponseEntity.ok(GlobalApiResponse.ok(responses));
+    return ResponseEntity.ok(new CommonResponse<>("페이지 팁 조회 성공", responses));
   }
 }

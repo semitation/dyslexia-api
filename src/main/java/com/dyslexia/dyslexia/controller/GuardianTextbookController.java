@@ -6,7 +6,9 @@ import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.StudentTextbookAssignment;
 import com.dyslexia.dyslexia.entity.Textbook;
-import com.dyslexia.dyslexia.exception.GlobalApiResponse;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.mapper.TextbookMapper;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
@@ -55,7 +57,7 @@ public class GuardianTextbookController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @GetMapping("textbooks")
-  public ResponseEntity<GlobalApiResponse<List<TextbookDto>>> getTeacherDocuments(
+  public ResponseEntity<CommonResponse<List<TextbookDto>>> getTeacherDocuments(
       @Parameter(description = "보호자 ID", required = true)
       @PathVariable("guardianId") Long guardianId) {
 
@@ -63,7 +65,7 @@ public class GuardianTextbookController {
 
     // 보호자 유효성 검사
     guardianRepository.findById(guardianId)
-        .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
     // 해당 보호자의 교재 조회
     List<Textbook> textbooks = textbookRepository.findByGuardianIdOrderByUpdatedAtDesc(guardianId);
@@ -73,7 +75,7 @@ public class GuardianTextbookController {
         .toList();
 
     return ResponseEntity.ok(
-        GlobalApiResponse.ok(
+        new CommonResponse<>(
             dtos.isEmpty() ? "업로드한 교재가 없습니다." : "교재 목록 조회 성공",
             dtos
         )
@@ -87,7 +89,7 @@ public class GuardianTextbookController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @PostMapping("/assign")
-  public ResponseEntity<GlobalApiResponse<Void>> assignTextbook(
+  public ResponseEntity<CommonResponse<Void>> assignTextbook(
       @RequestBody TextbookAssignmentRequestDto request) {
 
     log.info("교재 할당 요청: 보호자({}) 학생({}) 교재({})",
@@ -95,19 +97,19 @@ public class GuardianTextbookController {
 
     // 선생님 존재 여부 확인
     Guardian guardian = guardianRepository.findById(request.getGuardianId())
-        .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
       // 학생 존재 여부 확인
       Student student = studentRepository.findById(request.getStudentId())
-          .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+          .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
       // 교재 존재 여부 확인
       Textbook textbook = textbookRepository.findById(request.getTextbookId())
-          .orElseThrow(() -> new IllegalArgumentException("교재를 찾을 수 없습니다."));
+          .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
     assignmentRepository.findByStudentIdAndTextbookId(
         request.getStudentId(), request.getTextbookId()).ifPresent(a -> {
-      throw new IllegalStateException("이미 학생에게 할당된 교재입니다.");
+      throw new ApplicationException(ExceptionCode.BAD_REQUEST_ERROR);
     });
 
       // 할당 정보 생성
@@ -122,7 +124,7 @@ public class GuardianTextbookController {
       // 저장
       assignmentRepository.save(assignment);
 
-    return ResponseEntity.ok(GlobalApiResponse.ok("교재가 학생에게 할당되었습니다."));
+    return ResponseEntity.ok(new CommonResponse<>("교재가 학생에게 할당되었습니다."));
   }
 
   @Operation(summary = "학생 교재 할당 취소", description = "보호자가 학생에게 할당한 교재를 취소합니다.")
@@ -132,7 +134,7 @@ public class GuardianTextbookController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @DeleteMapping("assign/{studentId}/{textbookId}")
-  public ResponseEntity<GlobalApiResponse<Void>> unassignTextbook(
+  public ResponseEntity<CommonResponse<Void>> unassignTextbook(
       @Parameter(description = "보호자 ID", required = true) @PathVariable Long guardianId,
       @Parameter(description = "학생 ID", required = true) @PathVariable Long studentId,
       @Parameter(description = "교재 ID", required = true) @PathVariable Long textbookId) {
@@ -141,7 +143,7 @@ public class GuardianTextbookController {
     // 할당 정보 조회
     StudentTextbookAssignment assignment = assignmentRepository
         .findByStudentIdAndTextbookId(studentId, textbookId)
-        .orElseThrow(() -> new IllegalArgumentException("할당된 교재를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
     if (!assignment.getGuardian().getId().equals(guardianId)) {
       throw new AccessDeniedException("이 교재를 할당한 보호자만 취소할 수 있습니다.");
@@ -150,7 +152,7 @@ public class GuardianTextbookController {
       // 삭제
       assignmentRepository.delete(assignment);
 
-    return ResponseEntity.ok(GlobalApiResponse.ok("교재 할당이 취소되었습니다."));
+    return ResponseEntity.ok(new CommonResponse<>("교재 할당이 취소되었습니다."));
   }
 
   @Operation(summary = "보호자의 학생별 할당 교재 목록 조회", description = "보호자가 특정 학생에게 할당한 교재 목록을 조회합니다.")
@@ -161,7 +163,7 @@ public class GuardianTextbookController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @GetMapping("students/{studentId}")
-  public ResponseEntity<GlobalApiResponse<List<TextbookDto>>> getAssignedTextbooks(
+  public ResponseEntity<CommonResponse<List<TextbookDto>>> getAssignedTextbooks(
       @Parameter(description = "보호자 ID", required = true) @PathVariable Long guardianId,
       @Parameter(description = "학생 ID", required = true) @PathVariable Long studentId) {
 
@@ -177,7 +179,7 @@ public class GuardianTextbookController {
         .toList();
 
     return ResponseEntity.ok(
-        GlobalApiResponse.ok(
+        new CommonResponse<>(
             dtos.isEmpty() ? "할당된 교재가 없습니다." : "할당된 교재 목록 조회 성공",
             dtos
         )

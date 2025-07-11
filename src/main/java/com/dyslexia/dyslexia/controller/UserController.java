@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.dto.GuardianSignUpRequestDto;
 import com.dyslexia.dyslexia.dto.SignUpResponseDto;
 import com.dyslexia.dyslexia.dto.StudentSignUpRequestDto;
@@ -36,19 +37,19 @@ public class UserController {
 
     @Operation(summary = "보호자 회원가입", description = "새로운 보호자를 등록합니다.")
     @PostMapping("/signup/guardian")
-    public ResponseEntity<SignUpResponseDto> guardianSignUp(
+    public ResponseEntity<CommonResponse<SignUpResponseDto>> guardianSignUp(
         @RequestBody GuardianSignUpRequestDto dto) {
         SignUpResponseDto response = userService.registerGuardian(dto);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new CommonResponse<>("보호자 회원가입 성공", response));
     }
 
     @Operation(summary = "학생 회원가입", description = "새로운 학생을 등록합니다.")
     @PostMapping("/signup/student")
-    public ResponseEntity<SignUpResponseDto> studentSignUp(
+    public ResponseEntity<CommonResponse<SignUpResponseDto>> studentSignUp(
         @RequestBody StudentSignUpRequestDto dto,
         @Parameter(description = "매칭 코드") @RequestParam(value = "code", required = false) Optional<String> code) {
         SignUpResponseDto response = userService.registerStudent(dto, code);
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(new CommonResponse<>("학생 회원가입 성공", response));
     }
 
 
@@ -58,13 +59,13 @@ public class UserController {
             content = @Content(schema = @Schema(implementation = UserInfoDto.class))),
     })
     @GetMapping("/me")
-    public ResponseEntity<UserInfoDto> getMyInfo(
+    public ResponseEntity<CommonResponse<UserInfoDto>> getMyInfo(
         @Parameter(description = "JWT 토큰", required = true)
         @RequestHeader("Authorization") String token
     ) {
         String clientId = jwtTokenProvider.getClientId(token);
         String userType = jwtTokenProvider.getUserType(token);
         UserInfoDto userInfo = userService.getMyInfo(clientId, UserType.valueOf(userType));
-        return ResponseEntity.ok(userInfo);
+        return ResponseEntity.ok(new CommonResponse<>("내 정보 조회 성공", userInfo));
     }
 }

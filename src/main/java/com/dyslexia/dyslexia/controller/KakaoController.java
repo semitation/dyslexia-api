@@ -1,6 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.AuthResponseDto;
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.service.KakaoService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,9 +48,10 @@ public class KakaoController {
         ),
     })
     @GetMapping("/callback")
-    public ResponseEntity<AuthResponseDto> kakaoCallback(
+    public ResponseEntity<CommonResponse<AuthResponseDto>> kakaoCallback(
         @Parameter(description = "카카오 인가 코드", required = true)
         @RequestParam(value = "code") String code) {
-        return ResponseEntity.ok(kakaoService.processKakaoCallback(code));
+        AuthResponseDto authResponse = kakaoService.processKakaoCallback(code);
+        return ResponseEntity.ok(new CommonResponse<>("카카오 로그인 처리 완료", authResponse));
     }
 }

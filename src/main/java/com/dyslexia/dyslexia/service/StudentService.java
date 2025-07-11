@@ -5,8 +5,8 @@ import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.GuardianDto;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Guardian;
-import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
-import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.StudentRepository;
@@ -28,7 +28,7 @@ public class StudentService {
 
   public StudentDto getById(Long id) {
     Student student = studentRepository.findById(id)
-        .orElseThrow(() -> new StudentNotFoundException("아이디 '" + id + "'에 해당하는 학생을 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
     return studentMapper.toDto(student);
   }
@@ -40,10 +40,10 @@ public class StudentService {
   @Transactional
   public MatchResponseDto matchByCode(Long id, String code) {
     Guardian guardian = guardianRepository.findByMatchCode(code)
-        .orElseThrow(() -> new GuardianNotFoundException("코드 '" + code + "'에 해당하는 보호자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
     Student student = studentRepository.findById(id)
-        .orElseThrow(() -> new StudentNotFoundException("학생을 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
     guardian.addStudent(student);
     return guardianMapper.toMatchResponseDto(guardian);
@@ -51,7 +51,7 @@ public class StudentService {
 
   public StudentDto getByClientId(String clientId) {
     Student student = studentRepository.findByClientId(clientId)
-        .orElseThrow(() -> new GuardianNotFoundException("클라이언트 '" + clientId + "'에 해당하는 학생을 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
     return studentMapper.toDto(student);
   }

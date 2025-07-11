@@ -1,116 +1,67 @@
 package com.dyslexia.dyslexia.exception;
 
-import jakarta.persistence.EntityNotFoundException;
-import java.io.IOException;
+import static com.dyslexia.dyslexia.exception.ExceptionCode.INTERNAL_SERVER_ERROR;
+
+import com.dyslexia.dyslexia.dto.CommonResponse;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
-  @ExceptionHandler(AccessDeniedException.class)
-  public ResponseEntity<GlobalApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
-    log.warn("Access denied: {}", ex.getMessage());
-    return ResponseEntity.status(403).body(
-        GlobalApiResponse.fail(ex.getMessage())
-    );
-  }
+    @ExceptionHandler(ApplicationException.class)
+    protected ResponseEntity<CommonResponse<Void>> handleApplicationException(ApplicationException e, HttpServletRequest request){
 
-  @ExceptionHandler(EntityNotFoundException.class)
-  public ResponseEntity<GlobalApiResponse<Void>> handleNotFound(EntityNotFoundException ex) {
-    log.warn("Entity not found: {}", ex.getMessage());
-    return ResponseEntity.status(404).body(
-        GlobalApiResponse.fail(ex.getMessage())
-    );
-  }
+        applicationLogFormat(e, request);
 
-  @ExceptionHandler(IllegalArgumentException.class)
-  public ResponseEntity<GlobalApiResponse<Void>> handleIllegalArgumentException(IllegalArgumentException ex) {
-    log.warn("Illegal argument: {}", ex.getMessage());
-    return ResponseEntity.status(404).body(
-        GlobalApiResponse.fail(ex.getMessage())
-    );
-  }
-
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<GlobalApiResponse<Void>> handleGeneralError(Exception ex) {
-    log.error("Unexpected Exception occurred", ex);
-    return ResponseEntity.status(500).body(
-        GlobalApiResponse.fail("오류가 발생했습니다: " + ex.getMessage())
-    );
-  }
-
-  @ExceptionHandler(IOException.class)
-  public ResponseEntity<GlobalApiResponse<Void>> handleFileUploadError(IOException ex) {
-    log.error("IOException occurred", ex);
-    return ResponseEntity.status(500).body(
-        GlobalApiResponse.fail("파일 업로드 중 오류가 발생했습니다: " + ex.getMessage())
-    );
-  }
-
-  @ExceptionHandler(RuntimeException.class)
-  public ResponseEntity<GlobalApiResponse<Void>> handleRuntime(RuntimeException ex) {
-    log.error("RuntimeException occurred", ex);
-    return ResponseEntity.status(500).body(
-        GlobalApiResponse.fail(ex.getMessage())
-    );
-  }
-
-  /*@ExceptionHandler(MethodArgumentNotValidException.class)
-  public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {
-    StringBuilder sb = new StringBuilder();
-    for (FieldError error : ex.getBindingResult().getFieldErrors()) {
-      sb.append(error.getField()).append(": ").append(error.getDefaultMessage()).append("; ");
+        return ResponseEntity.status(e.getExceptionCode().getHttpStatus())
+            .body(new CommonResponse<Void>(e.getExceptionCode()));
     }
-    log.warn("Validation failed: {}", sb);
-    return buildErrorResponse(HttpStatus.BAD_REQUEST, sb.toString());
-  }
 
-  @ExceptionHandler(ResponseStatusException.class)
-  public ResponseEntity<ApiErrorResponse> handleStatus(ResponseStatusException ex) {
-    log.warn("StatusException: {}", ex.getMessage());
-    return buildErrorResponse((HttpStatus) ex.getStatusCode(), ex.getReason());
-  }
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<CommonResponse<Void>> handleException(Exception e, HttpServletRequest request){
 
-  @ExceptionHandler(RuntimeException.class)
-  public ResponseEntity<ApiErrorResponse> handleRuntime(RuntimeException ex) {
-    log.error("Unhandled RuntimeException", ex);
-    return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
-  }
+        logFormat(e, request);
 
-  @ExceptionHandler(IOException.class)
-  public ResponseEntity<ApiErrorResponse> handleIO(IOException ex) {
-    log.error("IO Exception", ex);
-    return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex.getMessage());
-  }
+        return ResponseEntity.internalServerError()
+            .body(new CommonResponse<Void>(INTERNAL_SERVER_ERROR));
+    }
 
-  @ExceptionHandler(Exception.class)
-  public ResponseEntity<ApiErrorResponse> handleGeneric(Exception ex) {
-    log.error("Unexpected Exception", ex);
-    return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "알 수 없는 오류가 발생했습니다.");
-  }
+    private void applicationLogFormat(ApplicationException e, HttpServletRequest request) {
 
-  @ExceptionHandler(GuardianNotFoundException.class)
-  public ResponseEntity<ApiErrorResponse> handleGuardianNotFoundException(
-      GuardianNotFoundException ex) {
-    log.warn("Guardian not found: {}", ex.getMessage());
-    return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
-  }
+        log.warn(
+            "\n[{} 발생]\n" +
+                "exception code: {}\n" +
+                "uri: {}\n" +
+                "method: {}\n" +
+                "message: {}\n",
+            e.getExceptionCode().name(),
+            e.getExceptionCode().getCode(),
+            e.getMessage(),
+            request.getRequestURI(),
+            request.getMethod(),
+            e
+        );
+    }
 
-  @ExceptionHandler(StudentNotFoundException.class)
-  public ResponseEntity<ApiErrorResponse> handleStudentNotFoundException(
-      StudentNotFoundException ex) {
-    log.warn("Student not found: {}", ex.getMessage());
-    return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage());
-  }
+    private void logFormat(Exception e, HttpServletRequest request) {
 
-  @ExceptionHandler(UserAlreadyExistsException.class)
-  public ResponseEntity<ApiErrorResponse> handleUserAlreadyExistsException(
-      UserAlreadyExistsException ex) {
-    log.warn("Guardian already exists: {}", ex.getMessage());
-    return buildErrorResponse(HttpStatus.CONFLICT, ex.getMessage());
-  }*/
+        log.error(
+            "\n[Exception 발생]\n" +
+                "uri: {}\n" +
+                "method: {}\n" +
+                "message: {}\n",
+            request.getRequestURI(),
+            request.getMethod(),
+            e.getMessage(),
+            e
+        );
+    }
 }

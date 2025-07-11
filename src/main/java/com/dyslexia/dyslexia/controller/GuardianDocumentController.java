@@ -1,9 +1,11 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.dto.UploadedDocumentsResponseDto;
 import com.dyslexia.dyslexia.entity.Document;
-import com.dyslexia.dyslexia.exception.GlobalApiResponse;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.DocumentMapper;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
@@ -42,7 +44,7 @@ public class GuardianDocumentController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @GetMapping("documents")
-  public ResponseEntity<GlobalApiResponse<List<DocumentDto>>> getGuardianDocuments(
+  public ResponseEntity<CommonResponse<List<DocumentDto>>> getGuardianDocuments(
       @Parameter(description = "보호자 ID", required = true)
       @PathVariable("guardianId") Long guardianId) {
 
@@ -50,7 +52,7 @@ public class GuardianDocumentController {
 
     // 존재 여부 체크
     guardianRepository.findById(guardianId)
-        .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
     List<Document> documents = documentRepository.findByGuardianIdOrderByUploadedAtDesc(guardianId);
 
@@ -58,9 +60,9 @@ public class GuardianDocumentController {
         .map(documentMapper::toDto)
         .toList();
 
-    return ResponseEntity.ok(GlobalApiResponse.ok(
+    return ResponseEntity.ok(new CommonResponse<>(
         documents.isEmpty() ? "업로드한 문서가 없습니다." : "문서 목록 조회 성공",
         dtos
     ));
   }
-} 
+}

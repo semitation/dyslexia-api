@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.GuardianCodeDto;
 import com.dyslexia.dyslexia.dto.GuardianDto;
@@ -37,9 +38,10 @@ public class GuardianController {
       content = @Content(schema = @Schema(implementation = GuardianDto.class))),
   })
   @GetMapping("/{id}")
-  public ResponseEntity<GuardianDto> getById(
+  public ResponseEntity<CommonResponse<GuardianDto>> getById(
       @Parameter(description = "보호자 ID", required = true) @PathVariable long id) {
-    return ResponseEntity.ok(guardianService.getById(id));
+    GuardianDto guardian = guardianService.getById(id);
+    return ResponseEntity.ok(new CommonResponse<>("보호자 조회 성공", guardian));
   }
 
   @Operation(summary = "클라이언트 ID로 보호자 조회", description = "클라이언트 ID를 통해 보호자 정보를 조회합니다.")
@@ -49,9 +51,10 @@ public class GuardianController {
   })
 
   @GetMapping
-  public ResponseEntity<GuardianDto> getByClientId(
+  public ResponseEntity<CommonResponse<GuardianDto>> getByClientId(
       @Parameter(description = "클라이언트 ID", required = true) @RequestParam String clientId) {
-    return ResponseEntity.ok(guardianService.getGuardianByClientId(clientId));
+    GuardianDto guardian = guardianService.getGuardianByClientId(clientId);
+    return ResponseEntity.ok(new CommonResponse<>("보호자 조회 성공", guardian));
   }
 
   @Operation(summary = "id로 매칭 코드 조회", description = "보호자 ID를 통해 매칭 코드를 조회합니다.")
@@ -60,9 +63,10 @@ public class GuardianController {
       content = @Content(schema = @Schema(implementation = GuardianCodeDto.class))),
   })
   @GetMapping("/code/{id}")
-  public ResponseEntity<GuardianCodeDto> getCodeById(
+  public ResponseEntity<CommonResponse<GuardianCodeDto>> getCodeById(
       @Parameter(description = "보호자 ID", required = true) @PathVariable long id) {
-    return ResponseEntity.ok(guardianService.getCodeById(id));
+    GuardianCodeDto code = guardianService.getCodeById(id);
+    return ResponseEntity.ok(new CommonResponse<>("매칭 코드 조회 성공", code));
   }
 
   @Operation(summary = "id로 담당 학생 조회", description = "보호자 ID를 통해 담당 학생 목록을 조회합니다.")
@@ -71,8 +75,9 @@ public class GuardianController {
       content = @Content(schema = @Schema(implementation = StudentDto.class))),
   })
   @GetMapping("/{guardianId}/students")
-  public ResponseEntity<List<StudentDto>> getStudentsByGuardianId(
+  public ResponseEntity<CommonResponse<List<StudentDto>>> getStudentsByGuardianId(
       @Parameter(description = "보호자 ID", required = true) @PathVariable Long guardianId) {
-    return ResponseEntity.ok(studentService.getStudentsByGuardian(guardianId));
+    List<StudentDto> students = studentService.getStudentsByGuardian(guardianId);
+    return ResponseEntity.ok(new CommonResponse<>("담당 학생 목록 조회 성공", students));
   }
 }

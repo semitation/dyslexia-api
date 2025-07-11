@@ -1,5 +1,7 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -19,7 +21,7 @@ public class PdfParserService {
 
     public List<String> parsePages(String s3Url) throws IOException {
         if (s3Url == null || !s3Url.startsWith("http")) {
-            throw new IllegalArgumentException("유효한 S3 URL이 필요합니다: " + s3Url);
+            throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
         }
         
         List<String> pages = new ArrayList<>();

@@ -1,7 +1,8 @@
 package com.dyslexia.dyslexia.controller;
 
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.dto.DocumentDto;
-import com.dyslexia.dyslexia.exception.GlobalApiResponse;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.service.ConvertProcessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,7 +39,7 @@ public class DocumentController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<GlobalApiResponse<DocumentDto>> uploadDocument(
+  public ResponseEntity<CommonResponse<DocumentDto>> uploadDocument(
       @Parameter(description = "보호자 ID", required = true) @RequestParam("guardianId") Long guardianId,
       @Parameter(description = "PDF 파일", required = true) @RequestParam("file") MultipartFile file,
       @Parameter(description = "문서 제목", required = true) @RequestParam("title") String title
@@ -48,12 +49,12 @@ public class DocumentController {
     String originalFilename = file.getOriginalFilename();
     if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".pdf")) {
       return ResponseEntity.badRequest().body(
-          GlobalApiResponse.fail("PDF 파일만 업로드 가능합니다.")
+          new CommonResponse<DocumentDto>(ExceptionCode.INVALID_FILE_TYPE)
       );
     }
 
     DocumentDto dto = convertProcessService.uploadDocument(guardianId, file, title);
 
-    return ResponseEntity.ok(GlobalApiResponse.ok("PDF 업로드 완료. 비동기 처리가 시작되었습니다.", dto));
+    return ResponseEntity.ok(new CommonResponse<>("PDF 업로드 완료. 비동기 처리가 시작되었습니다.", dto));
   }
 }

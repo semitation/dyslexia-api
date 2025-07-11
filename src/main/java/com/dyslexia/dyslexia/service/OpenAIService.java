@@ -3,6 +3,8 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.AIResponseDto;
 import com.dyslexia.dyslexia.entity.AIResponse;
 import com.dyslexia.dyslexia.entity.AIRequest;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.repository.AIRequestRepository;
 import com.dyslexia.dyslexia.repository.AIResponseRepository;
 import io.github.sashirestela.openai.SimpleOpenAI;
@@ -110,7 +112,7 @@ public class OpenAIService {
   private String validateApiKey(String apiKey) {
     if (apiKey == null || apiKey.trim().isEmpty()) {
       log.warn("OpenAI API 키를 찾을 수 없습니다");
-      throw new IllegalStateException("API 키가 설정되지 않았습니다");
+      throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
     }
     log.debug("API 키 유효성 확인: {}", apiKey.substring(0, Math.min(10, apiKey.length())) + "...");
 
@@ -137,7 +139,7 @@ public class OpenAIService {
       url, HttpMethod.POST, entity, byte[].class
     );
     if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-      throw new RuntimeException("OpenAI Speech API 호출 실패: " + response.getStatusCode());
+      throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
     }
     return response.getBody();
   }

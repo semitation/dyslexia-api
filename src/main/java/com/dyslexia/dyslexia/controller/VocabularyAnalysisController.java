@@ -1,6 +1,7 @@
 package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.dto.VocabularyAnalysisSearchRequestDto;
 import com.dyslexia.dyslexia.service.VocabularyAnalysisService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -46,7 +47,7 @@ public class VocabularyAnalysisController {
       )
   })
   @PostMapping("/search")
-  public ResponseEntity<List<VocabularyAnalysis>> searchVocabularyAnalysis(
+  public ResponseEntity<CommonResponse<List<VocabularyAnalysis>>> searchVocabularyAnalysis(
       @Parameter(description = "검색 조건", required = true)
       @RequestBody VocabularyAnalysisSearchRequestDto request) {
     log.info("어휘 분석 검색 요청: textbookId={}, pageNumber={}, blockId={}",
@@ -58,6 +59,6 @@ public class VocabularyAnalysisController {
         request.getBlockId()
     );
 
-    return ResponseEntity.ok(results);
+    return ResponseEntity.ok(new CommonResponse<>("어휘 분석 검색 완료", results));
   }
-} 
+}

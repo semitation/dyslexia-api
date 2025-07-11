@@ -2,6 +2,8 @@ package com.dyslexia.dyslexia.service;
 
 import com.dyslexia.dyslexia.dto.AuthResponseDto;
 import com.dyslexia.dyslexia.enums.UserType;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
@@ -99,7 +101,7 @@ public class KakaoService {
             return jsonNode.get("access_token").asText();
         } catch (Exception e) {
             log.error("Failed to get access token", e);
-            throw new RuntimeException("Failed to get access token", e);
+            throw new ApplicationException(ExceptionCode.OAUTH_REQUEST_FAILED);
         }
     }
 
@@ -122,7 +124,7 @@ public class KakaoService {
             return objectMapper.readTree(response.getBody());
         } catch (Exception e) {
             log.error("Failed to get user info", e);
-            throw new RuntimeException("Failed to get user info", e);
+            throw new ApplicationException(ExceptionCode.OAUTH_REQUEST_FAILED);
         }
     }
 
@@ -135,4 +137,4 @@ public class KakaoService {
         }
         return UserType.UNREGISTERED;
     }
-} 
+}
