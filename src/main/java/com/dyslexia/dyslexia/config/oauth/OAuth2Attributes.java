@@ -1,5 +1,7 @@
 package com.dyslexia.dyslexia.config.oauth;
 
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -27,7 +29,7 @@ public class OAuth2Attributes {
         if ("kakao".equals(registrationId)) {
             return ofKakao(userNameAttributeName, attributes);
         }
-        throw new IllegalArgumentException("지원하지 않는 소셜 로그인입니다.");
+        throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
     }
 
     @SuppressWarnings("unchecked")

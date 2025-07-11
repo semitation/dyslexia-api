@@ -10,9 +10,8 @@ import com.dyslexia.dyslexia.entity.Interest;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.UserType;
-import com.dyslexia.dyslexia.exception.UserAlreadyExistsException;
-import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
-import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
@@ -39,7 +38,7 @@ public class UserService {
     @Transactional
     public SignUpResponseDto registerGuardian(GuardianSignUpRequestDto dto) {
         if (guardianRepository.existsByClientId(dto.clientId())) {
-            throw new UserAlreadyExistsException("이미 가입된 사용자입니다.");
+            throw new ApplicationException(ExceptionCode.USER_ALREADY_EXISTS);
         }
 
         Guardian guardian = guardianRepository.save(guardianMapper.toEntity(dto));
@@ -62,7 +61,7 @@ public class UserService {
     @Transactional
     public SignUpResponseDto registerStudent(StudentSignUpRequestDto dto, Optional<String> code) {
         if (studentRepository.existsByClientId(dto.clientId())) {
-            throw new UserAlreadyExistsException("이미 가입된 사용자입니다.");
+            throw new ApplicationException(ExceptionCode.USER_ALREADY_EXISTS);
         }
 
         Student student = studentMapper.toEntity(dto);
@@ -76,7 +75,7 @@ public class UserService {
 
         code.ifPresent(matchCode -> {
             Guardian guardian = guardianRepository.findByMatchCode(matchCode)
-                .orElseThrow(() -> new GuardianNotFoundException("코드 '" + matchCode + "'에 해당하는 보호자를 찾을 수 없습니다."));
+                .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
             guardian.addStudent(student);
         });
@@ -96,15 +95,15 @@ public class UserService {
         return switch (userType) {
             case STUDENT -> {
                 Student student = studentRepository.findByClientId(clientId)
-                    .orElseThrow(() -> new RuntimeException("Student not found"));
+                    .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
                 yield new StudentInfoDto(student);
             }
             case GUARDIAN -> {
                 Guardian guardian = guardianRepository.findByClientId(clientId)
-                    .orElseThrow(() -> new RuntimeException("Guardian not found"));
+                    .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
                 yield new GuardianInfoDto(guardian);
             }
-            default -> throw new RuntimeException("Invalid user type");
+            default -> throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
         };
     }
 }

@@ -11,6 +11,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring", uses = {GradeMapper.class, InterestMapper.class})
 public interface StudentMapper {
 
+  @Mapping(source = "name", target = "name")
   @Mapping(source = "guardian.id", target = "guardianId")
   @Mapping(source = "grade", target = "grade")
   @Mapping(source = "interests", target = "interests")

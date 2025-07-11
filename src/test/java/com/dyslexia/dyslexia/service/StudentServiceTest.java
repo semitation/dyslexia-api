@@ -3,8 +3,8 @@ package com.dyslexia.dyslexia.service;
 import com.dyslexia.dyslexia.dto.MatchResponseDto;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Guardian;
-import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
-import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
@@ -87,10 +87,10 @@ class StudentServiceTest {
         when(guardianRepository.findByMatchCode(invalidCode)).thenReturn(Optional.empty());
 
         // When & Then
-        GuardianNotFoundException exception = assertThrows(GuardianNotFoundException.class,
+        ApplicationException exception = assertThrows(ApplicationException.class,
             () -> studentService.matchByCode(studentId, invalidCode));
 
-        assertThat(exception.getMessage()).contains(invalidCode);
+        assertThat(exception.getExceptionCode()).isEqualTo(ExceptionCode.GUARDIAN_NOT_FOUND);
         verify(guardianRepository).findByMatchCode(invalidCode);
         verify(studentRepository, never()).findById(any());
     }
@@ -109,10 +109,10 @@ class StudentServiceTest {
         when(studentRepository.findById(invalidStudentId)).thenReturn(Optional.empty());
 
         // When & Then
-        StudentNotFoundException exception = assertThrows(StudentNotFoundException.class,
+        ApplicationException exception = assertThrows(ApplicationException.class,
             () -> studentService.matchByCode(invalidStudentId, matchCode));
 
-        assertThat(exception.getMessage()).contains("학생");
+        assertThat(exception.getExceptionCode()).isEqualTo(ExceptionCode.STUDENT_NOT_FOUND);
         verify(guardianRepository).findByMatchCode(matchCode);
         verify(studentRepository).findById(invalidStudentId);
     }

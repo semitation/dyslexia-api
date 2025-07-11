@@ -11,6 +11,7 @@ public class StudentDto {
 
   private Long id;
   private String clientId;
+  private String name;
   private Long guardianId;
   private Grade grade;
   private String type;

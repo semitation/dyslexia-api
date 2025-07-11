@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
@@ -99,16 +101,16 @@ public abstract class BlockImpl implements Block {
                     return BlockType.valueOf(inferredType);
                 } catch (IllegalArgumentException e) {
                     log.error("Failed to infer block type from class name: {}", className);
-                    throw new IllegalStateException("Block type cannot be null and could not be inferred");
+                    throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
                 }
             }
-            throw new IllegalStateException("Block type cannot be null and could not be inferred");
+            throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
         try {
             return BlockType.valueOf(type.toUpperCase());
         } catch (IllegalArgumentException e) {
             log.error("Invalid block type: {}, id: {}", type, id);
-            throw new IllegalStateException("Invalid block type: " + type);
+            throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
     }
 

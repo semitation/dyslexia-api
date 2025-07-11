@@ -11,6 +11,8 @@ import com.dyslexia.dyslexia.domain.pdf.PageImageBlock;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.ImageType;
 import com.dyslexia.dyslexia.enums.TermType;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.util.ChatRequestBuilder;
 import com.dyslexia.dyslexia.util.ConvertProcessHolder;
 import com.dyslexia.dyslexia.util.PromptBuilder;
@@ -179,7 +181,7 @@ public class AIPromptService {
                     return (Block) block;
                 } catch (IllegalStateException e) {
                     log.error("블록 처리 중 오류 발생 - ID: {}, Error: {}", block.getId(), e.getMessage());
-                    throw new RuntimeException("블록 처리 실패: " + e.getMessage(), e);
+                    throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
                 }
             })
             .collect(Collectors.toList());
@@ -195,11 +197,11 @@ public class AIPromptService {
         return new PageBlockAnalysisResult(content, blocks);
       } catch (Exception e) {
         log.error("Block 구조 JSON 파싱 실패. 원본: {}", content, e);
-        throw new RuntimeException("AI 응답 JSON 파싱 실패: " + e.getMessage(), e);
+        throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
       }
     } catch (Exception e) {
       log.error("페이지 콘텐츠 처리 중 오류 발생", e);
-      throw new RuntimeException("AI를 통한 페이지 처리 중 오류가 발생했습니다.", e);
+      throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
     }
   }
 
@@ -435,7 +437,7 @@ public class AIPromptService {
                 return images;
             } catch (Exception e) {
                 log.error("이미지 JSON 파싱 실패. 원본: {}", content2, e);
-                throw new RuntimeException("AI 이미지 응답 JSON 파싱 실패: " + e.getMessage(), e);
+                throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
             }
         } catch (Exception e) {
             log.error("이미지 생성 중 오류 발생", e);
@@ -577,7 +579,7 @@ public class AIPromptService {
 
       if (guardianId == null || textbookId == null) {
         log.error("이미지 저장 실패: guardianId({}) 또는 textbookId({})가 없습니다.", guardianId, textbookId);
-        throw new IllegalStateException("guardianId와 textbookId가 필요합니다.");
+        throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
       }
 
       String fileName = blockId + ".webp";
@@ -655,7 +657,7 @@ public class AIPromptService {
       return content;
     } catch (Exception e) {
       log.error("OpenAI 번역 실패: {}", e.getMessage());
-      throw new RuntimeException("OpenAI 번역 실패: " + e.getMessage(), e);
+      throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
     }
   }
 

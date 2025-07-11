@@ -13,6 +13,8 @@ import com.dyslexia.dyslexia.entity.PageTip;
 import com.dyslexia.dyslexia.entity.Textbook;
 import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.dyslexia.dyslexia.enums.Grade;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.DocumentMapper;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
@@ -82,7 +84,7 @@ public class ConvertProcessService {
   public DocumentDto uploadDocument(Long guardianId, MultipartFile file, String title)
       throws IOException {
     Guardian guardian = guardianRepository.findById(guardianId)
-        .orElseThrow(() -> new IllegalArgumentException("보호자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
     String originalFilename = file.getOriginalFilename();
 
@@ -129,7 +131,7 @@ public class ConvertProcessService {
 
   private long CreateTextbook(long documentId, int pageCount) {
     Document document = documentRepository.findById(documentId)
-        .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
     Textbook textbook = Textbook.builder()
         .document(document)
@@ -151,7 +153,7 @@ public class ConvertProcessService {
   private void processConvertAsync(Long textbookId, List<String> rawPages) {
     try {
       Textbook textbook = textbookRepository.findById(textbookId)
-          .orElseThrow(() -> new IllegalArgumentException("교재를 찾을 수 없습니다."));
+          .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
       log.info("교재({}) 비동기 처리를 시작합니다.", textbookId);
 
@@ -321,7 +323,7 @@ public class ConvertProcessService {
           processedContentStr = objectMapper.writeValueAsString(blockAnalysisResult.getBlocks());
         } catch (Exception e) {
           log.error("블록->JSON 변환 중 오류 발생", e);
-          throw new RuntimeException("블록->JSON 변환 중 오류가 발생했습니다.", e);
+          throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
 
         // 3-2. blocks를 JSON Tree 형식으로 변환
@@ -330,7 +332,7 @@ public class ConvertProcessService {
           processedContent = objectMapper.readTree(processedContentStr);
         } catch (Exception e) {
           log.error("JSON 변환 중 오류 발생", e);
-          throw new RuntimeException("처리된 콘텐츠->JSON 변환 중 오류가 발생했습니다.", e);
+          throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
 
         log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
@@ -546,7 +548,7 @@ public class ConvertProcessService {
   @Transactional(readOnly = true)
   public ConvertProcessStatus getConvertProcessStatus(Long textbookId) {
     Textbook textbook = textbookRepository.findById(textbookId)
-        .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
     return textbook.getConvertProcessStatus();
   }
@@ -554,7 +556,7 @@ public class ConvertProcessService {
   @Transactional(readOnly = true)
   public int calculateConvertProcessProgress(Long textbookId) {
     Textbook textbook = textbookRepository.findById(textbookId)
-        .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
     ConvertProcessStatus status = textbook.getConvertProcessStatus();
 
@@ -578,10 +580,10 @@ public class ConvertProcessService {
   @Transactional
   public void retryConvertProcessing(Long textbookId) throws IOException {
     Textbook textbook = textbookRepository.findById(textbookId)
-        .orElseThrow(() -> new IllegalArgumentException("문서를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
 
     if (textbook.getConvertProcessStatus() != ConvertProcessStatus.FAILED) {
-      throw new IllegalStateException("실패한 문서만 재처리할 수 있습니다.");
+      throw new ApplicationException(ExceptionCode.BAD_REQUEST_ERROR);
     }
 
     textbook.setConvertProcessStatus(ConvertProcessStatus.PENDING);

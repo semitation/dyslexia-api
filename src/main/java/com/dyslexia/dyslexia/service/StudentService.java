@@ -5,12 +5,13 @@ import com.dyslexia.dyslexia.dto.StudentDto;
 import com.dyslexia.dyslexia.dto.GuardianDto;
 import com.dyslexia.dyslexia.entity.Student;
 import com.dyslexia.dyslexia.entity.Guardian;
-import com.dyslexia.dyslexia.exception.notfound.StudentNotFoundException;
-import com.dyslexia.dyslexia.exception.notfound.GuardianNotFoundException;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
+import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,10 +26,11 @@ public class StudentService {
   private final GuardianRepository guardianRepository;
   private final StudentMapper studentMapper;
   private final GuardianMapper guardianMapper;
+  private final JwtTokenProvider jwtTokenProvider;
 
   public StudentDto getById(Long id) {
     Student student = studentRepository.findById(id)
-        .orElseThrow(() -> new StudentNotFoundException("아이디 '" + id + "'에 해당하는 학생을 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
     return studentMapper.toDto(student);
   }
@@ -40,10 +42,10 @@ public class StudentService {
   @Transactional
   public MatchResponseDto matchByCode(Long id, String code) {
     Guardian guardian = guardianRepository.findByMatchCode(code)
-        .orElseThrow(() -> new GuardianNotFoundException("코드 '" + code + "'에 해당하는 보호자를 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
 
     Student student = studentRepository.findById(id)
-        .orElseThrow(() -> new StudentNotFoundException("학생을 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
     guardian.addStudent(student);
     return guardianMapper.toMatchResponseDto(guardian);
@@ -51,9 +53,50 @@ public class StudentService {
 
   public StudentDto getByClientId(String clientId) {
     Student student = studentRepository.findByClientId(clientId)
-        .orElseThrow(() -> new GuardianNotFoundException("클라이언트 '" + clientId + "'에 해당하는 학생을 찾을 수 없습니다."));
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
 
     return studentMapper.toDto(student);
   }
 
+  /**
+   * 현재 인증된 학생 정보 조회
+   */
+  public StudentDto getMyInfo() {
+    String currentClientId = jwtTokenProvider.getCurrentClientId();
+    Student student = studentRepository.findByClientId(currentClientId)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+    return studentMapper.toDto(student);
+  }
+
+  /**
+   * 현재 인증된 학생이 보호자와 매칭
+   */
+  @Transactional
+  public MatchResponseDto matchWithGuardian(String code) {
+    String currentClientId = jwtTokenProvider.getCurrentClientId();
+    Student student = studentRepository.findByClientId(currentClientId)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+    Guardian guardian = guardianRepository.findByMatchCode(code)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
+
+    guardian.addStudent(student);
+    return guardianMapper.toMatchResponseDto(guardian);
+  }
+
+  /**
+   * 현재 인증된 학생의 보호자 정보 조회
+   */
+  public GuardianDto getMyGuardian() {
+    String currentClientId = jwtTokenProvider.getCurrentClientId();
+    Student student = studentRepository.findByClientId(currentClientId)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+    if (student.getGuardian() == null) {
+      throw new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND);
+    }
+
+    return guardianMapper.toDto(student.getGuardian());
+  }
 }

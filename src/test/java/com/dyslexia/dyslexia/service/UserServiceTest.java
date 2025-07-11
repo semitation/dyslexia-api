@@ -17,7 +17,8 @@ import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.enums.Grade;
 import com.dyslexia.dyslexia.enums.GuardianRole;
 import com.dyslexia.dyslexia.enums.UserType;
-import com.dyslexia.dyslexia.exception.UserAlreadyExistsException;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.mapper.StudentMapper;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.InterestRepository;
@@ -195,9 +196,10 @@ class UserServiceTest {
         when(guardianRepository.existsByClientId(anyString())).thenReturn(true);
 
         //When & Then
-        UserAlreadyExistsException exception = assertThrows(UserAlreadyExistsException.class,
+        ApplicationException exception = assertThrows(ApplicationException.class,
             () -> userService.registerGuardian(guardianDto));
 
-        Assertions.assertThat(exception.getMessage()).contains("이미 가입된 사용자입니다.");
+        Assertions.assertThat(exception.getExceptionCode()).isEqualTo(ExceptionCode.USER_ALREADY_EXISTS);
+        Assertions.assertThat(exception.getMessage()).isEqualTo("이미 가입된 사용자입니다.");
     }
 }

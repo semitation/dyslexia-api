@@ -6,6 +6,8 @@ import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import java.net.URL;
 import java.util.Date;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +33,7 @@ public class StorageService {
 
     public String store(MultipartFile file, String uniqueFilename, Long guardianId, Long documentId) throws IOException {
         if (file.isEmpty()) {
-            throw new IllegalArgumentException("파일이 비어 있습니다.");
+            throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
         }
 
         try {
@@ -58,7 +60,7 @@ public class StorageService {
 
         } catch (Exception e) {
             log.error("S3 파일 업로드 중 오류 발생: {}", e.getMessage(), e);
-            throw new IOException("S3에 파일을 업로드할 수 없습니다: " + e.getMessage(), e);
+            throw new ApplicationException(ExceptionCode.FILE_UPLOAD_FAILED);
         }
     }
 
@@ -121,7 +123,7 @@ public class StorageService {
 
     private String extractS3KeyFromUrl(String s3KeyOrUrl) {
         if (s3KeyOrUrl == null) {
-            throw new IllegalArgumentException("S3 키 또는 URL이 null입니다.");
+            throw new ApplicationException(ExceptionCode.INVALID_ARGUMENT);
         }
 
         if (!s3KeyOrUrl.startsWith("http")) {

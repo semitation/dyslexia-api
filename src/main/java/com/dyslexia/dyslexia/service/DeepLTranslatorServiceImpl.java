@@ -1,5 +1,7 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -36,7 +38,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
             return translatedText;
         } catch (Exception e) {
             log.error("번역 실패: {}", e.getMessage());
-            throw new RuntimeException("번역 실패: " + e.getMessage(), e);
+            throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
     }
 
@@ -75,7 +77,7 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
                 DeepLResponse.class
         );
         if (!response.getStatusCode().is2xxSuccessful()) {
-            throw new RuntimeException("DeepL API 호출 실패: " + response.getStatusCode());
+            throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
         return response.getBody().getTranslations().get(0).getText();
     }
@@ -107,4 +109,4 @@ public class DeepLTranslatorServiceImpl implements DeepLTranslatorService {
             public void setDetected_source_language(String detected_source_language) { this.detected_source_language = detected_source_language; }
         }
     }
-} 
+}

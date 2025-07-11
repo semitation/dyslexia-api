@@ -2,7 +2,7 @@ package com.dyslexia.dyslexia.controller;
 
 import com.dyslexia.dyslexia.dto.ConvertProcessStatusDto;
 import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
-import com.dyslexia.dyslexia.exception.GlobalApiResponse;
+import com.dyslexia.dyslexia.dto.CommonResponse;
 import com.dyslexia.dyslexia.service.ConvertProcessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,7 +38,7 @@ public class ConvertStatusController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @GetMapping("{textbookId}")
-  public ResponseEntity<GlobalApiResponse<ConvertProcessStatusDto>> getConvertStatus(
+  public ResponseEntity<CommonResponse<ConvertProcessStatusDto>> getConvertStatus(
       @Parameter(description = "교재 ID", required = true)
       @PathVariable("textbookId") Long textbookId) {
 
@@ -51,7 +51,7 @@ public class ConvertStatusController {
         .progress(progress)
         .build();
 
-    return ResponseEntity.ok(GlobalApiResponse.ok("교재 처리 상태 조회 성공", dto));
+    return ResponseEntity.ok(new CommonResponse<>("교재 처리 상태 조회 성공", dto));
 
   }
 
@@ -64,7 +64,7 @@ public class ConvertStatusController {
       @ApiResponse(responseCode = "500", description = "서버 오류")
   })
   @PostMapping("{textbookId}/retry")
-  public ResponseEntity<GlobalApiResponse<ConvertProcessStatusDto>> retryConvertProcess(
+  public ResponseEntity<CommonResponse<ConvertProcessStatusDto>> retryConvertProcess(
       @Parameter(description = "교재 ID", required = true)
       @PathVariable("textbookId") Long textbookId) throws IOException {
 
@@ -78,6 +78,6 @@ public class ConvertStatusController {
         .progress(0)
         .build();
 
-    return ResponseEntity.ok(GlobalApiResponse.ok("교재 처리 재시도가 시작되었습니다", dto));
+    return ResponseEntity.ok(new CommonResponse<>("교재 처리 재시도가 시작되었습니다", dto));
   }
 } 
