@@ -19,6 +19,9 @@ import com.dyslexia.dyslexia.repository.StudentPageProgressRepository;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.StudentTextbookAssignmentRepository;
 import com.dyslexia.dyslexia.repository.TextbookRepository;
+import com.dyslexia.dyslexia.util.JwtTokenProvider;
+import com.dyslexia.dyslexia.exception.ApplicationException;
+import com.dyslexia.dyslexia.exception.ExceptionCode;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
@@ -35,103 +38,220 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class StudentTextbookService {
 
-  private final StudentRepository studentRepository;
-  private final TextbookRepository textbookRepository;
-  private final PageRepository pageRepository;
-  private final PageTipRepository pageTipRepository;
-  private final PageImageRepository pageImageRepository;
-  private final StudentPageProgressRepository studentPageProgressRepository;
-  private final StudentTextbookAssignmentRepository studentTextbookAssignmentRepository;
+    private final StudentRepository studentRepository;
+    private final TextbookRepository textbookRepository;
+    private final PageRepository pageRepository;
+    private final PageTipRepository pageTipRepository;
+    private final PageImageRepository pageImageRepository;
+    private final StudentPageProgressRepository studentPageProgressRepository;
+    private final StudentTextbookAssignmentRepository studentTextbookAssignmentRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
-  private TextbookMapper textbookMapper;
-  private PageMapper pageMapper;
+    private final TextbookMapper textbookMapper;
+    private final PageMapper pageMapper;
 
-  @Transactional(readOnly = true)
-  public List<TextbookDto> getAssignedTextbooks(Long studentId) {
-    return studentTextbookAssignmentRepository.findByStudentId(studentId).stream()
-        .map(StudentTextbookAssignment::getTextbook)
-        .map(textbookMapper::toDto)
-        .toList();
-  }
-
-  @Transactional(readOnly = true)
-  public List<PageDto> getTextbookPages(Long studentId, Long textbookId) {
-    // 교재에 대한 학생의 접근 권한 확인
-    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, textbookId)
-        .orElseThrow(() -> new AccessDeniedException("이 문서에 대한 접근 권한이 없습니다."));
-
-    // 교재 존재 여부 확인
-    textbookRepository.findById(textbookId)
-        .orElseThrow(() -> new IllegalArgumentException("해당 교재를 찾을 수 없습니다."));
-
-    return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId).stream()
-        .map(pageMapper::toDto)
-        .toList();
-  }
-
-  @Transactional(readOnly = true)
-  public PageDetailResponseDto getPageDetail(Long studentId, Long pageId) {
-    log.info("학생({}), 페이지({}) 페이지 상세 정보 조회", studentId, pageId);
-
-    Page page = pageRepository.findById(pageId)
-        .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
-
-    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, page.getTextbook().getId())
-        .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
-
-    List<PageTip> tips = pageTipRepository.findByPageId(pageId);
-    List<PageImage> images = pageImageRepository.findByPageId(pageId);
-    Optional<StudentPageProgress> progress = studentPageProgressRepository
-        .findByStudentIdAndPageId(studentId, pageId);
-
-    // 응답 구성
-    return PageDetailResponseDto.builder()
-        .page(page)
-        .tips(tips)
-        .images(images)
-        .progress(progress.orElse(null))
-        .build();
-  }
-
-  @Transactional
-  public void updatePageProgress(Long studentId, Long pageId,
-      PageProgressUpdateRequestDto request) {
-    log.info("페이지 진행 상태 업데이트: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
-
-    Page page = pageRepository.findById(pageId)
-        .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
-
-    Student student = studentRepository.findById(studentId)
-        .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
-
-    studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, page.getTextbook().getId())
-        .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
-
-    StudentPageProgress progress = studentPageProgressRepository
-        .findByStudentIdAndPageId(studentId, pageId)
-        .orElse(
-            StudentPageProgress.builder()
-                .student(student)
-                .page(page)
-                .build()
-        );
-
-    progress.setTimeSpentSeconds(request.getTimeSpentSeconds());
-    progress.setCompletionStatus(request.getCompletionStatus());
-    progress.setRetryCount(request.getRetryCount());
-    progress.setComprehensionScore(request.getComprehensionScore());
-    progress.setNotes(request.getNotes());
-    progress.setLastAccessedAt(LocalDateTime.now());
-
-    if (request.getUsedTipIds() != null && request.getUsedTipIds().length > 0) {
-      String usedTipIdsStr = Arrays.stream(request.getUsedTipIds())
-          .map(String::valueOf)
-          .collect(Collectors.joining(","));
-      progress.setUsedTipIds(usedTipIdsStr);
+    @Transactional(readOnly = true)
+    public List<TextbookDto> getAssignedTextbooks(Long studentId) {
+        return studentTextbookAssignmentRepository.findByStudentId(studentId).stream()
+            .map(StudentTextbookAssignment::getTextbook)
+            .map(textbookMapper::toDto)
+            .toList();
     }
 
-    studentPageProgressRepository.save(progress);
-  }
+    /**
+     * 현재 인증된 학생에게 할당된 교재 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<TextbookDto> getMyAssignedTextbooks() {
+        String currentClientId = jwtTokenProvider.getCurrentClientId();
+        Student student = studentRepository.findByClientId(currentClientId)
+            .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+        return studentTextbookAssignmentRepository.findByStudentId(student.getId()).stream()
+            .map(StudentTextbookAssignment::getTextbook)
+            .map(textbookMapper::toDto)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PageDto> getTextbookPages(Long studentId, Long textbookId) {
+        // 교재에 대한 학생의 접근 권한 확인
+        studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId, textbookId)
+            .orElseThrow(() -> new AccessDeniedException("이 문서에 대한 접근 권한이 없습니다."));
+
+        // 교재 존재 여부 확인
+        textbookRepository.findById(textbookId)
+            .orElseThrow(() -> new IllegalArgumentException("해당 교재를 찾을 수 없습니다."));
+
+        return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId).stream()
+            .map(pageMapper::toDto)
+            .toList();
+    }
+
+    /**
+     * 현재 인증된 학생의 교재 페이지 목록 조회
+     */
+    @Transactional(readOnly = true)
+    public List<PageDto> getMyTextbookPages(Long textbookId) {
+        String currentClientId = jwtTokenProvider.getCurrentClientId();
+        Student student = studentRepository.findByClientId(currentClientId)
+            .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+        // 교재에 대한 학생의 접근 권한 확인
+        studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(student.getId(),
+                textbookId)
+            .orElseThrow(() -> new AccessDeniedException("이 문서에 대한 접근 권한이 없습니다."));
+
+        // 교재 존재 여부 확인
+        textbookRepository.findById(textbookId)
+            .orElseThrow(() -> new IllegalArgumentException("해당 교재를 찾을 수 없습니다."));
+
+        return pageRepository.findByTextbookIdOrderByPageNumberAsc(textbookId).stream()
+            .map(pageMapper::toDto)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public PageDetailResponseDto getPageDetail(Long studentId, Long pageId) {
+        log.info("학생({}), 페이지({}) 페이지 상세 정보 조회", studentId, pageId);
+
+        Page page = pageRepository.findById(pageId)
+            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
+
+        studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId,
+                page.getTextbook().getId())
+            .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
+
+        List<PageTip> tips = pageTipRepository.findByPageId(pageId);
+        List<PageImage> images = pageImageRepository.findByPageId(pageId);
+        Optional<StudentPageProgress> progress = studentPageProgressRepository
+            .findByStudentIdAndPageId(studentId, pageId);
+
+        // 응답 구성
+        return PageDetailResponseDto.builder()
+            .page(page)
+            .tips(tips)
+            .images(images)
+            .progress(progress.orElse(null))
+            .build();
+    }
+
+    /**
+     * 현재 인증된 학생의 페이지 상세 정보 조회
+     */
+    @Transactional(readOnly = true)
+    public PageDetailResponseDto getMyPageDetail(Long pageId) {
+        String currentClientId = jwtTokenProvider.getCurrentClientId();
+        Student student = studentRepository.findByClientId(currentClientId)
+            .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+        log.info("현재 인증된 학생({}), 페이지({}) 페이지 상세 정보 조회", student.getId(), pageId);
+
+        Page page = pageRepository.findById(pageId)
+            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
+
+        studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(student.getId(),
+                page.getTextbook().getId())
+            .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
+
+        List<PageTip> tips = pageTipRepository.findByPageId(pageId);
+        List<PageImage> images = pageImageRepository.findByPageId(pageId);
+        Optional<StudentPageProgress> progress = studentPageProgressRepository
+            .findByStudentIdAndPageId(student.getId(), pageId);
+
+        // 응답 구성
+        return PageDetailResponseDto.builder()
+            .page(page)
+            .tips(tips)
+            .images(images)
+            .progress(progress.orElse(null))
+            .build();
+    }
+
+    @Transactional
+    public void updatePageProgress(Long studentId, Long pageId,
+        PageProgressUpdateRequestDto request) {
+        log.info("페이지 진행 상태 업데이트: 학생 ID: {}, 페이지 ID: {}", studentId, pageId);
+
+        Page page = pageRepository.findById(pageId)
+            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
+
+        Student student = studentRepository.findById(studentId)
+            .orElseThrow(() -> new IllegalArgumentException("학생을 찾을 수 없습니다."));
+
+        studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(studentId,
+                page.getTextbook().getId())
+            .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
+
+        StudentPageProgress progress = studentPageProgressRepository
+            .findByStudentIdAndPageId(studentId, pageId)
+            .orElse(
+                StudentPageProgress.builder()
+                    .student(student)
+                    .page(page)
+                    .build()
+            );
+
+        progress.setTimeSpentSeconds(request.getTimeSpentSeconds());
+        progress.setCompletionStatus(request.getCompletionStatus());
+        progress.setRetryCount(request.getRetryCount());
+        progress.setComprehensionScore(request.getComprehensionScore());
+        progress.setNotes(request.getNotes());
+        progress.setLastAccessedAt(LocalDateTime.now());
+
+        if (request.getUsedTipIds() != null && request.getUsedTipIds().length > 0) {
+            String usedTipIdsStr = Arrays.stream(request.getUsedTipIds())
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+            progress.setUsedTipIds(usedTipIdsStr);
+        }
+
+        studentPageProgressRepository.save(progress);
+    }
+
+    /**
+     * 현재 인증된 학생의 페이지 진행 상태 업데이트
+     */
+    @Transactional
+    public void updateMyPageProgress(Long pageId, PageProgressUpdateRequestDto request) {
+        String currentClientId = jwtTokenProvider.getCurrentClientId();
+        Student student = studentRepository.findByClientId(currentClientId)
+            .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+        log.info("현재 인증된 학생({})의 페이지 진행 상태 업데이트: 페이지 ID: {}", student.getId(), pageId);
+
+        Page page = pageRepository.findById(pageId)
+            .orElseThrow(() -> new IllegalArgumentException("페이지를 찾을 수 없습니다."));
+
+        studentTextbookAssignmentRepository.findByStudentIdAndTextbookId(student.getId(),
+                page.getTextbook().getId())
+            .orElseThrow(() -> new AccessDeniedException("이 페이지에 대한 접근 권한이 없습니다."));
+
+        StudentPageProgress progress = studentPageProgressRepository
+            .findByStudentIdAndPageId(student.getId(), pageId)
+            .orElse(
+                StudentPageProgress.builder()
+                    .student(student)
+                    .page(page)
+                    .build()
+            );
+
+        progress.setTimeSpentSeconds(request.getTimeSpentSeconds());
+        progress.setCompletionStatus(request.getCompletionStatus());
+        progress.setRetryCount(request.getRetryCount());
+        progress.setComprehensionScore(request.getComprehensionScore());
+        progress.setNotes(request.getNotes());
+        progress.setLastAccessedAt(LocalDateTime.now());
+
+        if (request.getUsedTipIds() != null && request.getUsedTipIds().length > 0) {
+            String usedTipIdsStr = Arrays.stream(request.getUsedTipIds())
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+            progress.setUsedTipIds(usedTipIdsStr);
+        }
+
+        studentPageProgressRepository.save(progress);
+    }
 
   /*@Transactional
   public ResponseEntity<ResponseDto> updateAccessibilitySettings(Long studentId, Long pageId,

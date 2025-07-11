@@ -11,6 +11,7 @@ import com.dyslexia.dyslexia.mapper.StudentMapper;
 import com.dyslexia.dyslexia.mapper.GuardianMapper;
 import com.dyslexia.dyslexia.repository.StudentRepository;
 import com.dyslexia.dyslexia.repository.GuardianRepository;
+import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class StudentService {
   private final GuardianRepository guardianRepository;
   private final StudentMapper studentMapper;
   private final GuardianMapper guardianMapper;
+  private final JwtTokenProvider jwtTokenProvider;
 
   public StudentDto getById(Long id) {
     Student student = studentRepository.findById(id)
@@ -56,4 +58,45 @@ public class StudentService {
     return studentMapper.toDto(student);
   }
 
+  /**
+   * 현재 인증된 학생 정보 조회
+   */
+  public StudentDto getMyInfo() {
+    String currentClientId = jwtTokenProvider.getCurrentClientId();
+    Student student = studentRepository.findByClientId(currentClientId)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+    return studentMapper.toDto(student);
+  }
+
+  /**
+   * 현재 인증된 학생이 보호자와 매칭
+   */
+  @Transactional
+  public MatchResponseDto matchWithGuardian(String code) {
+    String currentClientId = jwtTokenProvider.getCurrentClientId();
+    Student student = studentRepository.findByClientId(currentClientId)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+    Guardian guardian = guardianRepository.findByMatchCode(code)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
+
+    guardian.addStudent(student);
+    return guardianMapper.toMatchResponseDto(guardian);
+  }
+
+  /**
+   * 현재 인증된 학생의 보호자 정보 조회
+   */
+  public GuardianDto getMyGuardian() {
+    String currentClientId = jwtTokenProvider.getCurrentClientId();
+    Student student = studentRepository.findByClientId(currentClientId)
+        .orElseThrow(() -> new ApplicationException(ExceptionCode.STUDENT_NOT_FOUND));
+
+    if (student.getGuardian() == null) {
+      throw new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND);
+    }
+
+    return guardianMapper.toDto(student.getGuardian());
+  }
 }
