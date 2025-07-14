@@ -38,7 +38,7 @@ public class OpenAIService {
 
   @Transactional
   public AIResponseDto generateText(String prompt) {
-    AIResponseDto responseDto;
+    /*AIResponseDto responseDto;
 
     try {
       log.info("OpenAI API 호출 시작 - 프롬프트 길이: {}", prompt.length());
@@ -56,7 +56,7 @@ public class OpenAIService {
         log.info("응답 내용 길이: {}", content.length());
         saveEntity(prompt, "OpenAI API 호출 성공", "success", content);
 
-        responseDto = AIResponseDto.builder().output(content).message("OpenAI API 호출 성공")
+        responseDto = AIResponseDto.builder().(content).message("OpenAI API 호출 성공")
             .status("success").build();
 
       } catch (Exception e) {
@@ -70,7 +70,9 @@ public class OpenAIService {
       log.error("OpenAI API 호출 중 오류 발생: {}", e.getMessage(), e);
       return AIResponseDto.builder().output("").message("오류 발생: " + e.getMessage()).status("error")
           .build();
-    }
+    }*/
+
+    return null;
   }
 
   private void saveEntity(String prompt, String message, String status, String content) {

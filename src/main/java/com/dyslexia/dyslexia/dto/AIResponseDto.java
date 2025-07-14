@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -10,7 +11,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AIResponseDto {
-    private String output;
-    private String message;
-    private String status;
+    private String filename;
+    private String text;
+    private List<String> chunks;
+    private AiProcessMetadataDto metadata;
 } 

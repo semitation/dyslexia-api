@@ -5,6 +5,7 @@ import static com.dyslexia.dyslexia.util.FileHelper.extractExtension;
 import com.dyslexia.dyslexia.domain.pdf.TextBlock;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysis;
 import com.dyslexia.dyslexia.domain.pdf.VocabularyAnalysisRepository;
+import com.dyslexia.dyslexia.dto.AIResponseDto;
 import com.dyslexia.dyslexia.dto.DocumentDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Guardian;
@@ -50,6 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
+import reactor.core.scheduler.Schedulers;
 
 @Service
 @Slf4j
@@ -67,6 +69,7 @@ public class ConvertProcessService {
   private final PdfParserService pdfParserService;
   private final AIPromptService aiPromptService;
   private final StorageService storageService;
+  private final AiServiceClient aiServiceClient; // AiServiceClient 추가
   private final Executor taskExecutor;
   private final ObjectMapper objectMapper;
   private final DeepLTranslatorService deepLTranslatorService;
@@ -109,13 +112,56 @@ public class ConvertProcessService {
 
     document = documentRepository.save(document);
 
-    List<String> rawPages = pdfParserService.parsePages(document.getFilePath());
+    DocumentDto dto = documentMapper.toDto(document);
+    Long docId = document.getId();
+    MultipartFile payload = file;  // 람다 내에서 참조하기 위해 로컬 변수에 할당
 
-    long textbookId = CreateTextbook(document.getId(), rawPages.size());
+    // ① 트랜잭션 커밋 후 호출을 예약
+    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+      @Override
+      public void afterCommit() {
+        try {
+          aiServiceClient.callAiPreprocess(payload, true, 30f, 30f, 4000, true, true,
+                  "claude-sonnet-4-20250514")
+              // ② DB I/O 는 별도 스레드 풀로 옮겨서 event-loop 차단 방지
+              .publishOn(Schedulers.boundedElastic())
+              .subscribe(
+                  aiResponse -> {
+                    try {
+                      handleAiResponse(docId, aiResponse);
+                    } catch (Exception e) {
+                      log.error("AI 응답 처리 실패", e);
+                    }
+                  },
+                  ex -> log.error("AI 서비스 호출 오류", ex)
+              );
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      }
+    });
 
-    scheduleAsyncConvert(textbookId, rawPages);
+    // 3) 바로 호출자에게 응답 반환
+    return dto;
+  }
 
-    return documentMapper.toDto(document);
+  @Transactional
+  public void handleAiResponse(Long documentId, AIResponseDto aiResponse) {
+    Document document = documentRepository.findById(documentId)
+        .orElseThrow(() -> new IllegalStateException("문서 없음: " + documentId));
+
+    log.info(aiResponse.getFilename());
+    aiResponse.getChunks().forEach(log::info);
+    log.info(String.valueOf(aiResponse.getMetadata().getTotalTokens()));
+    log.info(String.valueOf(aiResponse.getMetadata().getTotalChunks()));
+    log.info(String.valueOf(aiResponse.getMetadata().getProcessingTime()));
+
+
+    // TODO: aiResponse 내용을 Document 엔티티에 저장
+    // document.setAiResult(aiResponse.getResultText());
+    // documentRepository.save(document);
+
+    log.info("Document#{} AI 결과 저장 완료", documentId);
   }
 
   private void scheduleAsyncConvert(long textbookId, List<String> rawPages) {
