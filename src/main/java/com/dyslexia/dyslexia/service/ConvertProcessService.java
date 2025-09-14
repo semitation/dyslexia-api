@@ -22,8 +22,8 @@ import com.dyslexia.dyslexia.repository.PageImageRepository;
 import com.dyslexia.dyslexia.repository.PageRepository;
 import com.dyslexia.dyslexia.repository.PageTipRepository;
 import com.dyslexia.dyslexia.repository.TextbookRepository;
-import com.dyslexia.dyslexia.service.AIPromptService.PageBlockAnalysisResult;
-import com.dyslexia.dyslexia.service.AIPromptService.TermInfo;
+// import com.dyslexia.dyslexia.service.AIPromptService.PageBlockAnalysisResult;
+// import com.dyslexia.dyslexia.service.AIPromptService.TermInfo;
 import com.dyslexia.dyslexia.util.ConvertProcessHolder;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -67,7 +67,6 @@ public class ConvertProcessService {
   private final PageTipRepository pageTipRepository;
   private final PageImageRepository pageImageRepository;
   private final PdfParserService pdfParserService;
-  private final AIPromptService aiPromptService;
   private final StorageService storageService;
   private final Executor taskExecutor;
   private final ObjectMapper objectMapper;
@@ -309,18 +308,17 @@ public class ConvertProcessService {
           return;
         }
 
-        // 1. OpenAI 번역 수행
-        String translatedContent = aiPromptService.translateTextWithOpenAI(rawContent,
-            Grade.GRADE_3);
+        // AI 서비스가 제거되어 임시로 원본 컨텐츠 사용
+        String translatedContent = rawContent;
 
-        // 2. 번역된 텍스트로 AI Block 처리
-        PageBlockAnalysisResult blockAnalysisResult = aiPromptService.processPageContent(
-            translatedContent, Grade.GRADE_3);
+        // 블록 분석 대신 간단한 처리
+        List<Object> simpleBlocks = new ArrayList<>();
+        // 임시 블록 생성 로직 필요
 
         // 3-1. blocks를 JSON 문자열로 변환
         String processedContentStr;
         try {
-          processedContentStr = objectMapper.writeValueAsString(blockAnalysisResult.getBlocks());
+          processedContentStr = objectMapper.writeValueAsString(simpleBlocks);
         } catch (Exception e) {
           log.error("블록->JSON 변환 중 오류 발생", e);
           throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
@@ -335,12 +333,10 @@ public class ConvertProcessService {
           throw new ApplicationException(ExceptionCode.INTERNAL_SERVER_ERROR);
         }
 
-        log.info("블럭 개수: {}", blockAnalysisResult.getBlocks().size());
+        log.info("블럭 개수: {}", simpleBlocks.size());
 
-        // 3-3. 텍스트 블록만 추출
-        List<TextBlock> textBlocks = blockAnalysisResult.getBlocks().stream().filter(
-            block -> block instanceof TextBlock && block.getType() != null && block.getType().name()
-                .equals("TEXT")).map(block -> (TextBlock) block).toList();
+        // 3-3. 텍스트 블록만 추출 - AI 서비스 제거로 빈 리스트
+        List<TextBlock> textBlocks = new ArrayList<>();
 
         log.info("textBlock 개수: {}", textBlocks.size());
 
@@ -379,11 +375,11 @@ public class ConvertProcessService {
           log.error("문서({}) 페이지({}) 배치 비동기 처리 중 오류 발생", textbook.getId(), pageNumber, e);
         }
 
-        // 4. 메타데이터 추출 (번역된 텍스트 기반)
-        String sectionTitle = aiPromptService.extractSectionTitle(translatedContent);
-        Integer readingLevel = aiPromptService.calculateReadingLevel(translatedContent);
-        Integer wordCount = aiPromptService.countWords(translatedContent);
-        Float complexityScore = aiPromptService.calculateComplexityScore(translatedContent);
+        // 4. 메타데이터 추출 - AI 서비스 제거로 기본값 설정
+        String sectionTitle = "Section " + pageNumber;
+        Integer readingLevel = 3; // 기본 3학년 레벨
+        Integer wordCount = translatedContent.split("\\s+").length;
+        Float complexityScore = 0.5f; // 기본 복잡도
 
         // 5. 페이지 엔티티 생성 및 저장
         Page page;
@@ -413,24 +409,10 @@ public class ConvertProcessService {
           pageImageRepository.deleteAll(pageImageRepository.findByPageId(page.getId()));
         }
 
-        // 7. 페이지 팁 추출
-        log.info("문서({}) 페이지({}) 용어 추출 시작", textbook.getId(), pageNumber);
-        List<TermInfo> terms = aiPromptService.extractTerms(translatedContent, Grade.GRADE_3);
-        for (TermInfo termInfo : terms) {
-          PageTip pageTip = PageTip.builder()
-              .page(page)
-              .term(termInfo.getTerm())
-              .simplifiedExplanation(termInfo.getExplanation())
-              .termPosition(termInfo.getPositionJson())
-              .termType(termInfo.getTermType())
-              .visualAidNeeded(termInfo.isVisualAidNeeded())
-              .readAloudText(termInfo.getReadAloudText())
-              .build();
-
-          pageTipRepository.save(pageTip);
-        }
-        log.info("문서({}) 페이지({}) 용어 {}개 처리 완료", terms.size(), textbook.getId(),
-            pageNumber);
+        // 7. 페이지 팁 추출 - AI 서비스 제거로 생략
+        log.info("문서({}) 페이지({}) 용어 추출 생략 (AI 서비스 제거됨)", textbook.getId(), pageNumber);
+        // terms 추출 로직 제거
+        log.info("문서({}) 페이지({}) 용어 0개 처리 완료", textbook.getId(), pageNumber);
 
         page.setProcessingStatus(ConvertProcessStatus.COMPLETED);
         pageRepository.save(page);

@@ -2,7 +2,7 @@ spring:
   config:
     import: optional:file:.env[.properties]
   datasource:
-    url: jdbc:postgresql://${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+    url: jdbc:postgresql://${POSTGRES_HOST}/${POSTGRES_DB}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -10,11 +10,27 @@ spring:
       maximum-pool-size: 5
       idle-timeout: 600000
       max-lifetime: 1800000
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
   jpa:
     database: postgresql
     hibernate:
-      ddl-auto: validate
+      ddl-auto: create-drop
       default_batch_fetch_size: 100
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  jackson:
+    property-naming-strategy: SNAKE_CASE
 
   servlet:
     multipart:
@@ -36,7 +52,7 @@ kakao:
 server:
   servlet:
     context-path: /api
-  port: 8080
+  port: 8084
   address: 0.0.0.0
   forward-headers-strategy: framework
 
@@ -79,3 +95,15 @@ cloud:
     credentials:
       access-key: ${AWS_ACCESS_KEY}
       secret-key: ${AWS_SECRET_KEY}
+
+external:
+  fastapi:
+    url: ${FASTAPI_URL:http://localhost:8000}
+    endpoints:
+      process: /api/v2/process/async
+
+redis:
+  channels:
+    progress: progress-channel
+    result: result-channel
+    failure: failure-channel

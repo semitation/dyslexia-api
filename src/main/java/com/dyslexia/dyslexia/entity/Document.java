@@ -1,7 +1,10 @@
 package com.dyslexia.dyslexia.entity;
 
+import com.dyslexia.dyslexia.enums.DocumentProcessingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -55,9 +58,27 @@ public class Document {
   @JdbcTypeCode(SqlTypes.JSON)
   private String metadata;
 
+  @Column(name = "job_id", unique = true, length = 36)
+  private String jobId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "processing_status")
+  private DocumentProcessingStatus processingStatus = DocumentProcessingStatus.PENDING;
+
+  @Column(name = "progress")
+  private Integer progress = 0;
+
+  @Setter
+  @Column(name = "error_message", columnDefinition = "TEXT")
+  private String errorMessage;
+
+  @Setter
+  @Column(name = "completed_at")
+  private LocalDateTime completedAt;
+
   @Builder
   public Document(Guardian guardian, String title, String originalFilename, String filePath,
-      Long fileSize, String mimeType, String metadata) {
+      Long fileSize, String mimeType, String metadata, String jobId) {
     this.guardian = guardian;
     this.title = title;
     this.originalFilename = originalFilename;
@@ -65,11 +86,23 @@ public class Document {
     this.fileSize = fileSize;
     this.mimeType = mimeType;
     this.metadata = metadata;
+    this.jobId = jobId;
     this.uploadedAt = LocalDateTime.now();
   }
 
   @PreUpdate
   public void preUpdate() {
     this.uploadedAt = LocalDateTime.now();
+  }
+
+  public void setProcessingStatus(DocumentProcessingStatus status) {
+    this.processingStatus = status;
+    if (status == DocumentProcessingStatus.COMPLETED) {
+      this.completedAt = LocalDateTime.now();
+    }
+  }
+
+  public void setProgress(Integer progress) {
+    this.progress = progress;
   }
 }
