@@ -23,9 +23,9 @@ spring:
   jpa:
     database: postgresql
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
       default_batch_fetch_size: 100
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         format_sql: true
@@ -68,6 +68,12 @@ springdoc:
     - /**
   show-actuator: true
 
+logging:
+  level:
+    org.hibernate.SQL: off
+    org.hibernate.orm.jdbc.bind: off
+    org.hibernate.type.descriptor.sql.BasicBinder: off
+
 ai:
   api:
     url: https://api.openai.com/v1/chat/completions
@@ -101,6 +107,8 @@ external:
     url: ${FASTAPI_URL:http://localhost:8000}
     endpoints:
       process: /api/v2/process/async
+  callback:
+    token: ${CALLBACK_TOKEN:}
 
 redis:
   channels:

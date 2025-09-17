@@ -79,14 +79,8 @@ public class RedisMessageSubscriber {
 
             try {
                 ResultMessageDto resultMessage = objectMapper.readValue(message, ResultMessageDto.class);
-                Optional<Document> documentOpt = documentRepository.findByJobId(resultMessage.getJobId());
-
-                if (documentOpt.isPresent()) {
-                    Document document = documentOpt.get();
-                    document.setProcessingStatus(DocumentProcessingStatus.FAILED);
-                    document.setErrorMessage("결과 처리 중 오류: " + e.getMessage());
-                    documentRepository.save(document);
-                }
+                String errorMessage = "결과 처리 중 오류: " + e.getMessage();
+                documentDataProcessingService.markDocumentAsFailed(resultMessage.getJobId(), errorMessage);
             } catch (Exception ex) {
                 log.error("결과 메시지 처리 실패 상태 업데이트 중 오류", ex);
             }
@@ -99,19 +93,12 @@ public class RedisMessageSubscriber {
 
             FailureMessageDto failureMessage = objectMapper.readValue(message, FailureMessageDto.class);
 
-            Optional<Document> documentOpt = documentRepository.findByJobId(failureMessage.getJobId());
+            log.info("FastAPI 처리 실패 메시지 수신: Job ID - {}", failureMessage.getJobId());
 
-            if (documentOpt.isPresent()) {
-                Document document = documentOpt.get();
-                document.setProcessingStatus(DocumentProcessingStatus.FAILED);
-                document.setErrorMessage(failureMessage.getError());
-                documentRepository.save(document);
-
-                log.info("실패 상태 업데이트 완료. JobId: {}, Error: {}",
-                        failureMessage.getJobId(), failureMessage.getError());
-            } else {
-                log.warn("실패 처리 대상 문서를 찾을 수 없음. JobId: {}", failureMessage.getJobId());
-            }
+            documentDataProcessingService.markDocumentAsFailed(
+                failureMessage.getJobId(),
+                failureMessage.getErrorMessage()
+            );
 
         } catch (Exception e) {
             log.error("실패 메시지 처리 중 오류 발생: {}", message, e);

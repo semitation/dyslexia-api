@@ -3,6 +3,7 @@ package com.dyslexia.dyslexia.controller;
 import com.dyslexia.dyslexia.dto.AsyncDocumentCreateResponseDto;
 import com.dyslexia.dyslexia.dto.DocumentProcessingStatusDto;
 import com.dyslexia.dyslexia.entity.Guardian;
+import com.dyslexia.dyslexia.repository.GuardianRepository;
 import com.dyslexia.dyslexia.service.AsyncDocumentProcessingService;
 import com.dyslexia.dyslexia.util.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +28,7 @@ public class AsyncDocumentController {
 
     private final AsyncDocumentProcessingService asyncDocumentProcessingService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final GuardianRepository guardianRepository;
 
     @PostMapping
     @Operation(summary = "비동기 교안 생성 요청",
@@ -83,10 +85,8 @@ public class AsyncDocumentController {
             throw new IllegalArgumentException("유효하지 않은 토큰입니다.");
         }
 
-        String email = jwtTokenProvider.getUsernameFromToken(token);
-        Guardian guardian = new Guardian();
-        guardian.setEmail(email);
-
-        return guardian;
+        String clientId = jwtTokenProvider.getClientId(token);
+        return guardianRepository.findByClientId(clientId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자를 찾을 수 없습니다."));
     }
 }
