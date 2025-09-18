@@ -4,6 +4,7 @@ import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Page;
 import com.dyslexia.dyslexia.entity.Textbook;
 import com.dyslexia.dyslexia.enums.DocumentProcessingStatus;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.dyslexia.dyslexia.exception.ApplicationException;
 import com.dyslexia.dyslexia.exception.ExceptionCode;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
@@ -42,6 +43,12 @@ public class DocumentDataProcessingService {
             }
             pageRepository.saveAll(pages);
 
+            // 완료 상태로 마킹 및 카운트 반영
+            textbook.setConvertProcessStatus(ConvertProcessStatus.COMPLETED);
+            textbook.setLearnRate(0); // 초기값 유지 (필요 시 계산 로직으로 교체)
+            textbook.setPageCount(pages.size());
+            textbookRepository.save(textbook);
+
             log.info("문서 데이터 처리 완료. JobId: {}, Pages: {}",
                     document.getJobId(), pages.size());
 
@@ -73,11 +80,13 @@ public class DocumentDataProcessingService {
     }
 
     private Textbook createTextbookFromDocument(Document document) {
-        return Textbook.builder()
-                .document(document)
-                .guardian(document.getGuardian())
-                .title(document.getTitle())
-                .build();
+        // 이미 업로드 시점에 프리뷰(Textbook)가 생성되어 있을 수 있음. 있으면 재사용.
+        return textbookRepository.findByDocumentId(document.getId())
+                .orElseGet(() -> Textbook.builder()
+                        .document(document)
+                        .guardian(document.getGuardian())
+                        .title(document.getTitle())
+                        .build());
     }
 
     private List<Page> parseJsonToPages(JsonNode resultJson, Textbook textbook) {
@@ -115,6 +124,7 @@ public class DocumentDataProcessingService {
                     .readingLevel(null)
                     .wordCount(originalText != null ? originalText.length() : null)
                     .complexityScore(null)
+                    .processingStatus(ConvertProcessStatus.COMPLETED)
                     .build();
 
                 pages.add(page);
@@ -153,6 +163,7 @@ public class DocumentDataProcessingService {
                 .readingLevel(readingLevel)
                 .wordCount(wordCount)
                 .complexityScore(complexityScore)
+                .processingStatus(ConvertProcessStatus.COMPLETED)
                 .build();
     }
 }

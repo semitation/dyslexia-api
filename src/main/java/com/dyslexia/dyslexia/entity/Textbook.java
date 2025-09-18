@@ -87,6 +87,10 @@ public class Textbook {
     this.learnRate = learnRate;
   }
 
+  public void setPageCount(Integer pageCount) {
+    this.pageCount = pageCount;
+  }
+
   public void addPage(Page page) {
     this.pages.add(page);
     if (page.getTextbook() != this) {

@@ -4,8 +4,11 @@ import com.dyslexia.dyslexia.dto.AsyncDocumentCreateResponseDto;
 import com.dyslexia.dyslexia.dto.DocumentProcessingStatusDto;
 import com.dyslexia.dyslexia.entity.Document;
 import com.dyslexia.dyslexia.entity.Guardian;
+import com.dyslexia.dyslexia.entity.Textbook;
+import com.dyslexia.dyslexia.enums.ConvertProcessStatus;
 import com.dyslexia.dyslexia.enums.DocumentProcessingStatus;
 import com.dyslexia.dyslexia.repository.DocumentRepository;
+import com.dyslexia.dyslexia.repository.TextbookRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +24,7 @@ import java.util.UUID;
 public class AsyncDocumentProcessingService {
 
     private final DocumentRepository documentRepository;
+    private final TextbookRepository textbookRepository;
     private final FastApiClient fastApiClient;
 
     @Transactional
@@ -38,10 +42,25 @@ public class AsyncDocumentProcessingService {
 
         documentRepository.save(document);
 
+        // 1) 업로드 즉시 교재 프리뷰(placeholder) 엔티티 생성 → 목록 노출 가능
+        Textbook textbook = Textbook.builder()
+            .document(document)
+            .guardian(guardian)
+            .title(document.getTitle())
+            .pageCount(null)
+            .learnRate(0)
+            .build();
+        textbook.setConvertProcessStatus(ConvertProcessStatus.PENDING);
+        textbookRepository.save(textbook);
+
         try {
             fastApiClient.processDocumentAsync(file, jobId);
             document.setProcessingStatus(DocumentProcessingStatus.PROCESSING);
             documentRepository.save(document);
+
+            // 교재 상태도 PROCESSING으로 전환
+            textbook.setConvertProcessStatus(ConvertProcessStatus.PROCESSING);
+            textbookRepository.save(textbook);
 
             log.info("비동기 교안 생성 요청 완료. JobId: {}, FileName: {}", jobId, file.getOriginalFilename());
 
@@ -54,6 +73,10 @@ public class AsyncDocumentProcessingService {
             document.setProcessingStatus(DocumentProcessingStatus.FAILED);
             document.setErrorMessage(e.getMessage());
             documentRepository.save(document);
+
+            // 교재 상태 실패로 전환 (프리뷰 엔티티도 함께 표시)
+            textbook.setConvertProcessStatus(ConvertProcessStatus.FAILED);
+            textbookRepository.save(textbook);
 
             log.error("비동기 교안 생성 요청 실패. JobId: {}", jobId, e);
             throw new RuntimeException("교안 생성 요청에 실패했습니다.", e);

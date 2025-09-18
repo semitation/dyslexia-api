@@ -52,38 +52,25 @@ public class RedisMessageSubscriber {
     @Transactional
     public void handleResultMessage(String message) {
         try {
-            log.info("결과 메시지 수신: {}", message);
+            log.info("결과 메시지 수신(웹훅 우선이므로 S3 처리 생략): {}", message);
 
             ResultMessageDto resultMessage = objectMapper.readValue(message, ResultMessageDto.class);
 
+            // 웹훅이 최종 결과를 전달하므로, Redis의 결과 메시지에서는 상태를 변경하지 않는다.
+            // 필요 시 진행률만 100으로 보정하여 UI 반영을 돕는다.
             Optional<Document> documentOpt = documentRepository.findByJobId(resultMessage.getJobId());
-
-            if (documentOpt.isPresent()) {
-                Document document = documentOpt.get();
-
-                JsonNode resultJson = s3JsonProcessingService.downloadAndParseJson(resultMessage.getS3Url());
-
-                documentDataProcessingService.processAndSaveDocumentData(document, resultJson);
-
-                document.setProcessingStatus(DocumentProcessingStatus.COMPLETED);
-                documentRepository.save(document);
-
-                log.info("교안 생성 완료. JobId: {}", resultMessage.getJobId());
-
-            } else {
-                log.warn("결과 처리 대상 문서를 찾을 수 없음. JobId: {}", resultMessage.getJobId());
-            }
+            documentOpt.ifPresent(document -> {
+                Integer progress = document.getProgress();
+                if (progress == null || progress < 100) {
+                    document.setProgress(100);
+                    documentRepository.save(document);
+                    log.info("진행률 100% 반영(결과 채널). JobId: {}", resultMessage.getJobId());
+                }
+            });
 
         } catch (Exception e) {
-            log.error("결과 메시지 처리 중 오류 발생: {}", message, e);
-
-            try {
-                ResultMessageDto resultMessage = objectMapper.readValue(message, ResultMessageDto.class);
-                String errorMessage = "결과 처리 중 오류: " + e.getMessage();
-                documentDataProcessingService.markDocumentAsFailed(resultMessage.getJobId(), errorMessage);
-            } catch (Exception ex) {
-                log.error("결과 메시지 처리 실패 상태 업데이트 중 오류", ex);
-            }
+            // 결과 채널은 보조 신호이므로 실패로 상태를 바꾸지 않는다. 단순 로깅만 수행.
+            log.error("결과 메시지 파싱 중 오류 (무시): {}", message, e);
         }
     }
 
