@@ -50,7 +50,7 @@ public class StudentController {
   })
   @PostMapping("/match")
   public ResponseEntity<CommonResponse<MatchResponseDto>> matchWithGuardian(
-      @Parameter(description = "매칭 코드", required = true) @RequestParam String code) {
+      @Parameter(description = "매칭 코드", required = true) @RequestParam("code") String code) {
     MatchResponseDto result = studentService.matchWithGuardian(code);
     return ResponseEntity.ok(new CommonResponse<>("보호자 매칭 성공", result));
   }

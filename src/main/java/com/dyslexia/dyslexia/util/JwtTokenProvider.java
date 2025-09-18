@@ -66,6 +66,7 @@ public class JwtTokenProvider {
 
     public boolean validateToken(String token) {
         try {
+            token = sanitizeToken(token);
             Jwts.parserBuilder()
                 .setSigningKey(key)
                 .build()
@@ -78,6 +79,7 @@ public class JwtTokenProvider {
     }
 
     public String getClientId(String token) {
+        token = sanitizeToken(token);
         return Jwts.parserBuilder()
             .setSigningKey(key)
             .build()
@@ -87,6 +89,7 @@ public class JwtTokenProvider {
     }
 
     public String getUserType(String token) {
+        token = sanitizeToken(token);
         Claims claims = Jwts.parserBuilder()
             .setSigningKey(key)
             .build()
@@ -110,5 +113,15 @@ public class JwtTokenProvider {
             return authentication.getName();
         }
         return null;
+    }
+
+    private String sanitizeToken(String token) {
+        if (token == null) return null;
+        String t = token.trim();
+        if (t.length() == 0) return t;
+        if (t.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            t = t.substring(7).trim();
+        }
+        return t;
     }
 }

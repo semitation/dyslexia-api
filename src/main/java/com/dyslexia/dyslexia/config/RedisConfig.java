@@ -1,6 +1,7 @@
 package com.dyslexia.dyslexia.config;
 
 import com.dyslexia.dyslexia.service.RedisMessageSubscriber;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,9 +25,9 @@ public class RedisConfig {
     @Bean
     public RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory connectionFactory,
-            MessageListenerAdapter progressMessageListener,
-            MessageListenerAdapter resultMessageListener,
-            MessageListenerAdapter failureMessageListener) {
+            @Qualifier("progressMessageListener") MessageListenerAdapter progressMessageListener,
+            @Qualifier("resultMessageListener") MessageListenerAdapter resultMessageListener,
+            @Qualifier("failureMessageListener") MessageListenerAdapter failureMessageListener) {
 
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);

@@ -63,7 +63,7 @@ public class StudentTextbookController {
     @GetMapping("/{textbookId}/pages")
     public ResponseEntity<CommonResponse<List<PageDto>>> getMyTextbookPages(
         @Parameter(description = "교재 ID", required = true)
-        @PathVariable Long textbookId) {
+        @PathVariable("textbookId") Long textbookId) {
 
         log.info("현재 인증된 학생의 교재({}) 페이지 목록 조회 요청", textbookId);
 
@@ -85,7 +85,7 @@ public class StudentTextbookController {
     @GetMapping("/pages/{pageId}")
     public ResponseEntity<CommonResponse<PageDetailResponseDto>> getMyPageDetail(
         @Parameter(description = "페이지 ID", required = true)
-        @PathVariable Long pageId) {
+        @PathVariable("pageId") Long pageId) {
 
         log.info("현재 인증된 학생의 페이지({}) 상세 내용 조회 요청", pageId);
 
@@ -105,7 +105,7 @@ public class StudentTextbookController {
     @PostMapping("/pages/{pageId}/progress")
     public ResponseEntity<CommonResponse<Void>> updateMyPageProgress(
         @Parameter(description = "페이지 ID", required = true)
-        @PathVariable Long pageId,
+        @PathVariable("pageId") Long pageId,
 
         @RequestBody PageProgressUpdateRequestDto request) {
 

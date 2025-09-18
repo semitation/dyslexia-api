@@ -61,9 +61,9 @@ public class GuardianTextbookController {
     })
     @PostMapping("/assign")
     public ResponseEntity<CommonResponse<Void>> assignTextbook(
-        @Parameter(description = "학생 ID", required = true) @RequestParam Long studentId,
-        @Parameter(description = "교재 ID", required = true) @RequestParam Long textbookId,
-        @Parameter(description = "할당 메모") @RequestParam(required = false) String notes) {
+        @Parameter(description = "학생 ID", required = true) @RequestParam("studentId") Long studentId,
+        @Parameter(description = "교재 ID", required = true) @RequestParam("textbookId") Long textbookId,
+        @Parameter(description = "할당 메모") @RequestParam(name = "notes", required = false) String notes) {
 
         log.info("교재 할당 요청: 학생({}), 교재({})", studentId, textbookId);
 
@@ -81,8 +81,8 @@ public class GuardianTextbookController {
     })
     @DeleteMapping("/assign/{studentId}/{textbookId}")
     public ResponseEntity<CommonResponse<Void>> unassignTextbook(
-        @Parameter(description = "학생 ID", required = true) @PathVariable Long studentId,
-        @Parameter(description = "교재 ID", required = true) @PathVariable Long textbookId) {
+        @Parameter(description = "학생 ID", required = true) @PathVariable("studentId") Long studentId,
+        @Parameter(description = "교재 ID", required = true) @PathVariable("textbookId") Long textbookId) {
 
         log.info("교재 할당 취소 요청: 학생({}), 교재({})", studentId, textbookId);
 
@@ -100,7 +100,7 @@ public class GuardianTextbookController {
     })
     @GetMapping("/assigned/{studentId}")
     public ResponseEntity<CommonResponse<List<TextbookDto>>> getAssignedTextbooks(
-        @Parameter(description = "학생 ID", required = true) @PathVariable Long studentId) {
+        @Parameter(description = "학생 ID", required = true) @PathVariable("studentId") Long studentId) {
 
         log.info("학생({})의 할당된 교재 목록 조회 요청", studentId);
 

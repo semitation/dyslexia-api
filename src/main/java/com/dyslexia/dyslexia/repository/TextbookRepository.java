@@ -13,4 +13,8 @@ public interface TextbookRepository extends JpaRepository<Textbook, Long> {
   List<Textbook> findByGuardianIdOrderByUpdatedAtDesc(Long guardianId);
 
   List<Textbook> findByGuardianIdOrderByCreatedAtDesc(Long guardianId);
+
+  java.util.Optional<Textbook> findByDocumentId(Long documentId);
+
+  java.util.Optional<Textbook> findByDocumentIdAndGuardianId(Long documentId, Long guardianId);
 }

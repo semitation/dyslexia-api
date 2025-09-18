@@ -70,7 +70,7 @@ public class AsyncDocumentController {
     })
     public ResponseEntity<DocumentProcessingStatusDto> getDocumentStatus(
             @Parameter(description = "작업 ID", required = true)
-            @PathVariable String jobId,
+            @PathVariable("jobId") String jobId,
             HttpServletRequest request) {
 
         Guardian guardian = getGuardianFromToken(request);

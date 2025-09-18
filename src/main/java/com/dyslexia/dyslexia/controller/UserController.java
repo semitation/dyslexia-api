@@ -14,14 +14,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpSession;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,10 +58,12 @@ public class UserController {
             content = @Content(schema = @Schema(implementation = UserInfoDto.class))),
     })
     @GetMapping("/me")
-    public ResponseEntity<CommonResponse<UserInfoDto>> getMyInfo(
-        @Parameter(description = "JWT 토큰", required = true)
-        @RequestHeader("Authorization") String token
-    ) {
+    public ResponseEntity<CommonResponse<UserInfoDto>> getMyInfo(HttpServletRequest request) {
+        String token = jwtTokenProvider.resolveToken(request);
+        if (token == null || !jwtTokenProvider.validateToken(token)) {
+            throw new com.dyslexia.dyslexia.exception.ApplicationException(
+                com.dyslexia.dyslexia.exception.ExceptionCode.ACCESS_DENIED);
+        }
         String clientId = jwtTokenProvider.getClientId(token);
         String userType = jwtTokenProvider.getUserType(token);
         UserInfoDto userInfo = userService.getMyInfo(clientId, UserType.valueOf(userType));
