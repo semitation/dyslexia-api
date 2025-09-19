@@ -28,4 +28,6 @@ public interface StudentTextbookAssignmentRepository extends JpaRepository<Stude
     List<StudentTextbookAssignment> findByAssignedById(Long guardianId);
 
     List<StudentTextbookAssignment> findByAssignedByIdAndStudentId(Long guardianId, Long studentId);
+    
+    Long countByTextbookId(Long textbookId);
 } 
