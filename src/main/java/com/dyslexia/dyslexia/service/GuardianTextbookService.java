@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.service;
 
+import com.dyslexia.dyslexia.dto.TextbookDetailResponseDto;
 import com.dyslexia.dyslexia.dto.TextbookDto;
 import com.dyslexia.dyslexia.entity.Guardian;
 import com.dyslexia.dyslexia.entity.Student;
@@ -117,5 +118,36 @@ public class GuardianTextbookService {
             .map(StudentTextbookAssignment::getTextbook)
             .map(textbookMapper::toDto)
             .toList();
+    }
+
+    /**
+     * 현재 인증된 보호자의 특정 교재 상세 정보 조회
+     */
+    public TextbookDetailResponseDto getTextbookDetail(Long textbookId) {
+        String currentClientId = jwtTokenProvider.getCurrentClientId();
+        Guardian guardian = guardianRepository.findByClientId(currentClientId)
+            .orElseThrow(() -> new ApplicationException(ExceptionCode.GUARDIAN_NOT_FOUND));
+
+        Textbook textbook = textbookRepository.findById(textbookId)
+            .orElseThrow(() -> new ApplicationException(ExceptionCode.ENTITY_NOT_FOUND));
+
+        // 본인의 교재인지 확인
+        if (!textbook.getGuardian().getId().equals(guardian.getId())) {
+            throw new ApplicationException(ExceptionCode.ACCESS_DENIED);
+        }
+
+        // 해당 교재에 할당된 학생 수 조회
+        Long assignedStudentCount = assignmentRepository.countByTextbookId(textbookId);
+
+        return TextbookDetailResponseDto.builder()
+            .textbookId(textbook.getId())
+            .textbookName(textbook.getTitle())
+            .totalPages(textbook.getPageCount())
+            .assignedStudentCount(assignedStudentCount)
+            .createdAt(textbook.getCreatedAt())
+            .convertStatus(textbook.getConvertProcessStatus().name())
+            .originalFileName(textbook.getDocument() != null ? 
+                textbook.getDocument().getOriginalFilename() : null)
+            .build();
     }
 }
