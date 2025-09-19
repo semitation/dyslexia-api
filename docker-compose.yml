@@ -4,7 +4,7 @@ services:
     container_name: dyslexia_app
     env_file: .env
     ports:
-      - "8080:8080"
+      - "8084:8084"
     volumes:
       - ./app.jar:/app/app.jar
     restart: unless-stopped
