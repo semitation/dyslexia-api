@@ -10,4 +10,12 @@ public interface VocabularyAnalysisRepository extends JpaRepository<VocabularyAn
     List<VocabularyAnalysis> findByTextbookId(Long textbookId);
     List<VocabularyAnalysis> findByTextbookIdAndPageNumber(Long textbookId, Integer pageNumber);
     List<VocabularyAnalysis> findByTextbookIdAndPageNumberAndBlockId(Long textbookId, Integer pageNumber, String blockId);
+
+    java.util.Optional<VocabularyAnalysis> findByTextbookIdAndBlockIdAndWordAndStartIndexAndEndIndex(
+        Long textbookId,
+        String blockId,
+        String word,
+        Integer startIndex,
+        Integer endIndex
+    );
 } 
