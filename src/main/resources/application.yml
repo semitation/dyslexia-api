@@ -78,6 +78,8 @@ ai:
   api:
     url: https://api.openai.com/v1/chat/completions
     key: ${OPENAI_API_KEY}
+  tts:
+    url: https://api.openai.com/v1/audio/speech
 
 deepl:
   api:
