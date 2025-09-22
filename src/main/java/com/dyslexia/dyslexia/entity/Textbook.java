@@ -97,4 +97,9 @@ public class Textbook {
       page.setTextbook(this);
     }
   }
+
+  // 편의 메서드: Document ID 조회
+  public Long getDocumentId() {
+    return document != null ? document.getId() : null;
+  }
 }

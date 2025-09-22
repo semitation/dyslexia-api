@@ -1,5 +1,6 @@
 package com.dyslexia.dyslexia.domain.pdf;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -32,6 +33,7 @@ public class VocabularyAnalysis {
     private Integer gradeLevel;
 
     @Column(columnDefinition = "TEXT")
+    @JsonProperty("phoneme_analysis_json")
     private String phonemeAnalysisJson;
 
     private LocalDateTime createdAt;

@@ -11,8 +11,16 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class VocabularyAnalysisSearchRequestDto {
-    @JsonAlias({"documentId", "document_id", "textbook_id"})
+    // Accept both camelCase and snake_case
+    @JsonAlias({"textbookId", "textbook_id"})
     private Long textbookId;
+
+    @JsonAlias({"documentId", "document_id"})
+    private Long documentId;
+
+    @JsonAlias({"pageNumber", "page_number"})
     private Integer pageNumber;
+
+    @JsonAlias({"blockId", "block_id"})
     private String blockId;
 }
