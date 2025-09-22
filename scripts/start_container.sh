@@ -27,7 +27,7 @@ docker pull $NEW_IMAGE_URI
 docker run -d \
   --name $CONTAINER_NAME \
   --env-file .env \
-  -p 8080:8080 \
+  -p 8084:8084 \
   -v $APP_PATH/logs:/var/log/dyslexia-app \
   --restart unless-stopped \
   $NEW_IMAGE_URI
